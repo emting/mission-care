@@ -385,9 +385,12 @@ export function AdminLetter({ value }: { value: Review }) {
             <p className="muted">目前角色只能編輯與送審，不能核准或發布。</p>
           )}
           {value.self && !value.canReview && (
-            <p className="notice">
-              ⚠ 你是作者或曾編輯此信，不可自行核准。請交由獨立審核人處理。
-            </p>
+            <>
+              <p className="notice">
+                ⚠ 你是作者或曾編輯此信，不可自行核准。請交由獨立審核人處理。
+              </p>
+              <button disabled aria-disabled="true">核准此版本</button>
+            </>
           )}
         </div>
       </section>
