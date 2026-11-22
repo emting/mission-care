@@ -511,25 +511,25 @@ export function DataTable({
   if (!items.length) return <Empty />;
   return (
     <div className="table-scroll admin-data-scroll">
-      <table className="admin-data-table">
+      <table className="admin-data-table" role="table">
         <caption className="sr-only">授權範圍內資料列表</caption>
-        <thead>
-          <tr>
+        <thead role="rowgroup">
+          <tr role="row">
             {columns[kind].map((c) => (
-              <th scope="col" key={c.key}>
+              <th scope="col" role="columnheader" key={c.key}>
                 {c.label}
               </th>
             ))}
-            {actions && <th scope="col">操作</th>}
+            {actions && <th scope="col" role="columnheader">操作</th>}
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {(items as Row[]).map((row, i) => (
-            <tr key={String(row.id ?? i)}>
+            <tr role="row" key={String(row.id ?? i)}>
               {columns[kind].map((c) => (
-                <td key={c.key} data-label={c.label}><span className={`table-value${["actorLabel","requestId","createdAt","dueAt","expiresAt"].includes(c.key)?" table-nowrap":""}`}>{c.key==="targetLabel" && typeof row.targetHref==="string" ? <Link href={row.targetHref}>{cell(c.key,row[c.key])}</Link> : cell(c.key, row[c.key])}</span></td>
+                <td role="cell" key={c.key} data-label={c.label}><span className="table-label">{c.label}</span><span className={`table-value${["actorLabel","requestId","createdAt","dueAt","expiresAt"].includes(c.key)?" table-nowrap":""}`}>{c.key==="targetLabel" && typeof row.targetHref==="string" ? <Link href={row.targetHref}>{cell(c.key,row[c.key])}</Link> : cell(c.key, row[c.key])}</span></td>
               ))}
-              {actions && <td data-label="操作"><div className="table-value">{actions(row)}</div></td>}
+              {actions && <td role="cell" data-label="操作"><span className="table-label">操作</span><div className="table-value">{actions(row)}</div></td>}
             </tr>
           ))}
         </tbody>

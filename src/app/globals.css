@@ -1191,6 +1191,9 @@ td .text-link {
   font-size: 11px;
   white-space: nowrap;
 }
+.admin-data-table .table-label {
+  display: none;
+}
 .admin-data-table td {
   overflow-wrap: normal;
   word-break: normal;
@@ -2042,8 +2045,8 @@ dd {
   .admin-data-table td:last-child {
     border-bottom: 0;
   }
-  .admin-data-table td::before {
-    content: attr(data-label);
+  .admin-data-table .table-label {
+    display: block;
     color: #5d705d;
     font-size: 12px;
     font-weight: 600;

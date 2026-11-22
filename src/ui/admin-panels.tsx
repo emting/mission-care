@@ -569,36 +569,36 @@ export function AdminAccess({
         <h2>已授權紀錄</h2>
         {grants.length ? (
           <div className="table-scroll admin-data-scroll">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>授權代號</th>
-                  <th>宣教士代號</th>
-                  <th>會友代號</th>
-                  <th>核准申請參照</th>
-                  <th>有效期限</th>
-                  <th>狀態</th>
-                  <th>操作</th>
+            <table className="admin-data-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">授權代號</th>
+                  <th scope="col" role="columnheader">宣教士代號</th>
+                  <th scope="col" role="columnheader">會友代號</th>
+                  <th scope="col" role="columnheader">核准申請參照</th>
+                  <th scope="col" role="columnheader">有效期限</th>
+                  <th scope="col" role="columnheader">狀態</th>
+                  <th scope="col" role="columnheader">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {grants.map((g) => (
-                  <tr key={g.id}>
-                    <td data-label="授權代號"><span className="table-value">
+                  <tr role="row" key={g.id}>
+                    <td role="cell" data-label="授權代號"><span className="table-label">授權代號</span><span className="table-value">
                       <code title={g.id}>{g.id.slice(0, 8)}</code>
                     </span></td>
-                    <td data-label="宣教士代號"><span className="table-value"><code>{g.missionaryCode}</code></span></td>
-                    <td data-label="會友代號"><span className="table-value"><code>{g.memberCode}</code></span></td>
-                    <td data-label="核准申請參照"><span className="table-value">{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</span></td>
-                    <td data-label="有效期限"><span className="table-value table-nowrap">{formatGrantExpiry(g.expiresAt)}</span></td>
-                    <td data-label="狀態"><span className="table-value">
+                    <td role="cell" data-label="宣教士代號"><span className="table-label">宣教士代號</span><span className="table-value"><code>{g.missionaryCode}</code></span></td>
+                    <td role="cell" data-label="會友代號"><span className="table-label">會友代號</span><span className="table-value"><code>{g.memberCode}</code></span></td>
+                    <td role="cell" data-label="核准申請參照"><span className="table-label">核准申請參照</span><span className="table-value">{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</span></td>
+                    <td role="cell" data-label="有效期限"><span className="table-label">有效期限</span><span className="table-value table-nowrap">{formatGrantExpiry(g.expiresAt)}</span></td>
+                    <td role="cell" data-label="狀態"><span className="table-label">狀態</span><span className="table-value">
                       {g.revokedAt
                         ? "已撤銷"
                         : new Date(g.expiresAt) > new Date()
                           ? "有效"
                           : "已到期"}
                     </span></td>
-                    <td data-label="操作"><div className="table-value">
+                    <td role="cell" data-label="操作"><span className="table-label">操作</span><div className="table-value">
                       <button
                         className="danger"
                         aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限`}
