@@ -132,12 +132,13 @@ export class Editorial {
   async aiDraft(token:string|undefined,memberToken:string|undefined,id:string,expected:number,requestId:string) {
     const c=this.core; const actor=token ? (await c.auth.adminSession(token)).admin.id : (await c.auth.member(memberToken)).id;
     return c.operation({actorId:actor,action:'letter.ai_draft',resourceId:id,requestId},{id,expected},async db=>{
-      const l=await c.letter(db,id); c.conflict(l.revision,expected);
+      const l=await c.letter(db,id);
       if(token) await c.staff(db,token,'draft_edit',l.missionaryId);
       else {
         const [assignment]=await db.select().from(w.submitterAssignments).innerJoin(w.memberSubmissions,eq(w.memberSubmissions.userId,w.submitterAssignments.userId)).where(and(eq(w.memberSubmissions.letterId,id),eq(w.submitterAssignments.userId,actor),eq(w.submitterAssignments.missionaryId,l.missionaryId),gt(w.submitterAssignments.expiresAt,c.now()),isNull(w.submitterAssignments.revokedAt)));
         if(!assignment) return fail(404,'not_found');
       }
+      c.conflict(l.revision,expected);
       const [pause]=await db.select().from(s.systemSettings).where(eq(s.systemSettings.key,'ai_import_disabled')); if(pause?.enabled) return fail(403,'ai_disabled');
       if(l.status!=='draft') return fail(409,'revision_frozen');
       const m=await c.missionary(db,l.missionaryId); const content=await c.snapshot(db,id,l.revision);

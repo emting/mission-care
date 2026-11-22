@@ -29,3 +29,15 @@ it('restricted drafts of previously public letters require new dual control befo
   const [published]=await f.db.select().from(s.letters).where(eq(s.letters.id,l.id));
   expect(published).toMatchObject({status:'published',visibility:'public',revision:5});
 });
+
+it('AI drafting hides revision state until staff scope or member delegation is authorized', async () => {
+  const l=await f.draft();
+  const outsider=await f.staff(['editor'],f.b.id);
+  for(const revision of [1,99]) {
+    await expect(f.editorial.aiDraft(outsider.token,undefined,l.id,revision,randomUUID())).rejects.toMatchObject({status:404,code:'not_found'});
+    await expect(f.editorial.aiDraft(undefined,f.member,l.id,revision,randomUUID())).rejects.toMatchObject({status:404,code:'not_found'});
+  }
+  await expect(f.editorial.aiDraft(outsider.token,undefined,randomUUID(),99,randomUUID())).rejects.toMatchObject({status:404});
+  await expect(f.editorial.aiDraft(f.editor.token,undefined,l.id,99,randomUUID())).rejects.toMatchObject({status:409,code:'revision_conflict'});
+  expect((await f.editorial.aiDraft(f.editor.token,undefined,l.id,1,randomUUID())).needs_human_review).toBe(true);
+});
