@@ -106,8 +106,9 @@ export function MemberLogin({ devEnabled }: { devEnabled: boolean }) {
             ，了解關懷內容不應轉傳。
           </span>
         </label>
+        {!consent && <p id="consent-helper" className="muted">請先勾選上方的資料使用說明</p>}
         {liffId ? (
-          <button disabled={!consent || action.pending} onClick={lineLogin}>
+          <button aria-describedby={!consent ? "consent-helper" : undefined} disabled={!consent || action.pending} onClick={lineLogin}>
             使用 LINE 登入
           </button>
         ) : (
@@ -121,6 +122,7 @@ export function MemberLogin({ devEnabled }: { devEnabled: boolean }) {
             <p>登入虛構會友，不連接 LINE，不具管理權限。</p>
             <button
               className="secondary"
+              aria-describedby={!consent ? "consent-helper" : undefined}
               disabled={!consent || action.pending}
               onClick={() =>
                 action.run(() => api("auth/dev", {}), "已登入虛構會友")
