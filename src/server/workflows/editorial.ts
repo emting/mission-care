@@ -8,6 +8,8 @@ import { draftSafely,localAi,type AiProvider } from '../ai';
 import { staffCan } from '../policy';
 import { WorkflowCore,type Content } from './core';
 import {securityReasonInput} from '../security-reason';
+import {z} from 'zod';
+export const returnCommentInput=z.string().trim().min(1).max(2000);
 export class Editorial {
   constructor(public core:WorkflowCore,private ai:AiProvider=localAi) {}
   async create(token:string|undefined,memberToken:string|undefined,missionaryId:string,content:Content,requestId:string) {
@@ -64,9 +66,9 @@ export class Editorial {
       await db.update(s.letters).set({status:'pending_review'}).where(eq(s.letters.id,id)); return {id,revision:l.revision,tasks};
     });
   }
-  async decide(token:string|undefined,taskId:string,expected:number,decision:'approve'|'reject',consent:boolean,requestId:string) {
+  async decide(token:string|undefined,taskId:string,expected:number,decision:'approve'|'reject',consent:boolean,requestId:string,comment='') {
     const c=this.core; const {admin}=await c.auth.adminSession(token);
-    return c.operation({actorId:admin.id,action:'review.decision',resourceId:taskId,requestId},{taskId,expected,decision,consent},async db=>{
+    return c.operation({actorId:admin.id,action:'review.decision',resourceId:taskId,requestId},{taskId,expected,decision,consent,comment},async db=>{
       const [task]=await db.select().from(s.reviewTasks).where(eq(s.reviewTasks.id,taskId)); if(!task) return fail(404,'not_found');
       const l=await c.letter(db,task.letterId); await c.staff(db,token,'review',l.missionaryId); c.conflict(l.revision,expected); c.conflict(task.revision,expected);
       if(l.status!=='pending_review' || task.status!=='pending' || (task.assigneeId && task.assigneeId!==admin.id)) return fail(409,'invalid_state');
@@ -75,10 +77,12 @@ export class Editorial {
       if(l.authorId===admin.id || memberAuthor || revisions.some(r=>r.editorId===admin.id)) return fail(403,'self_approval');
       const old=await db.select().from(s.letterReviews).where(and(eq(s.letterReviews.letterId,l.id),eq(s.letterReviews.revision,l.revision),eq(s.letterReviews.reviewerId,admin.id)));
       if(old.length) return fail(409,'already_reviewed');
+      const note=decision==='reject'?returnCommentInput.safeParse(comment):null;
+      if(note && !note.success) return fail(400,'return_comment_required');
       const content=await c.snapshot(db,l.id,l.revision);
       const assets=content.assetIds.length ? await db.select().from(s.letterAssets).where(inArray(s.letterAssets.id,content.assetIds)) : [];
       if(assets.some(a=>!a.sanitizedAt)) return fail(409,'unsafe_assets');
-      await db.insert(s.letterReviews).values({letterId:l.id,revision:l.revision,reviewerId:admin.id,decision,consentConfirmed:consent,mediaHashes:assets.map(a=>a.contentHash)});
+      await db.insert(s.letterReviews).values({letterId:l.id,revision:l.revision,reviewerId:admin.id,decision,returnCommentEncrypted:note?.success?encryptSecret(note.data,c.key):null,consentConfirmed:consent,mediaHashes:assets.map(a=>a.contentHash)});
       await db.update(s.reviewTasks).set({status:decision,assigneeId:admin.id}).where(eq(s.reviewTasks.id,taskId));
       if(decision==='reject') {
         await db.update(s.letters).set({status:'draft'}).where(eq(s.letters.id,l.id));

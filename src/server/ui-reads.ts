@@ -191,8 +191,10 @@ export class UiReads {
     const suggestion = draft?.encryptedAiDraft
       ? aiOutput.parse(JSON.parse(decryptSecret(draft.encryptedAiDraft, c.key)))
       : null;
+    const [returned]=await c.db.select({note:s.letterReviews.returnCommentEncrypted}).from(s.letterReviews).where(and(eq(s.letterReviews.letterId,id),eq(s.letterReviews.decision,'reject'))).orderBy(desc(s.letterReviews.createdAt),desc(s.letterReviews.id)).limit(1);
     return {
       id,
+      latestReturnNote: returned?.note && (can('draft_edit') || can('review')) ? decryptSecret(returned.note,c.key) : null,
       missionaryId: letter.missionaryId,
       revision: letter.revision,
       status: letter.status,

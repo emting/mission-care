@@ -23,7 +23,7 @@ it('restricted drafts of previously public letters require new dual control befo
   expect((await f.core.snapshot(f.db,l.id,4)).visibility).toBe('restricted');
   const submitted = await f.editorial.submit(f.editor.token,l.id,4,randomUUID());
   expect(submitted.tasks).toHaveLength(2);
-  await f.editorial.decide(f.reviewer.token,submitted.tasks[0].id,4,'reject',false,randomUUID());
+  await f.editorial.decide(f.reviewer.token,submitted.tasks[0].id,4,'reject',false,randomUUID(),'請核對虛構文字。');
   await makePublic(4);
   expect((await f.auth.letter(f.member,l.id)).id).toBe(l.id);
   const [published]=await f.db.select().from(s.letters).where(eq(s.letters.id,l.id));

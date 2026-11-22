@@ -91,7 +91,7 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
         }
       }
       if(parts[1]==='reviews' && parts[3]==='decision' && method==='POST') {
-        const b=z.object({...revision,decision:z.enum(['approve','reject']),consent:z.boolean()}).strict().parse(body); return respond(await e.decide(admin,z.uuid().parse(parts[2]),b.expected_revision,b.decision,b.consent,b.request_id));
+        const b=z.object({...revision,decision:z.enum(['approve','reject']),consent:z.boolean(),comment:z.string().max(2000).optional()}).strict().parse(body); return respond(await e.decide(admin,z.uuid().parse(parts[2]),b.expected_revision,b.decision,b.consent,b.request_id,b.comment));
       }
       if(parts[1]==='access-requests' && parts[3]==='decision' && method==='POST') {
         const b=z.object({...requestId,approve:z.boolean(),expiresAt:z.iso.datetime()}).strict().parse(body); return respond(await m.decideAccess(admin,z.uuid().parse(parts[2]),b.approve,new Date(b.expiresAt),b.request_id));

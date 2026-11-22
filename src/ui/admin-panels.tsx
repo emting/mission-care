@@ -25,6 +25,7 @@ export function AdminLetter({ value }: { value: Review }) {
     [raw, setRaw] = useState(value.content.raw ?? ""),
     [consent, setConsent] = useState(false),
     [archiveReason,setArchiveReason] = useState("");
+  const [returnComment,setReturnComment]=useState("");
   const frozen = value.status === "pending_review";
   const editable = value.canEdit && !frozen;
   const dirty =
@@ -43,6 +44,7 @@ export function AdminLetter({ value }: { value: Review }) {
           ...revision(),
           decision: choice,
           consent,
+          ...(choice==='reject'?{comment:returnComment}:{}),
         }),
       "審核決定已記錄",
     );
@@ -64,6 +66,7 @@ export function AdminLetter({ value }: { value: Review }) {
         </div>
       </PageHeading>
       <Feedback value={action.feedback} />
+      {value.latestReturnNote && <aside className="notice"><strong>最近一次退修意見</strong><p style={{whiteSpace:'pre-wrap'}}>{value.latestReturnNote}</p></aside>}
       <div className="review-layout">
         <section className="panel editor-panel">
           <div className="panel-heading">
@@ -330,9 +333,10 @@ export function AdminLetter({ value }: { value: Review }) {
                 </p>
               ) : null}
               <div className="button-row">
+                <label>退修意見（必填）<textarea required maxLength={2000} value={returnComment} onChange={e=>setReturnComment(e.target.value)} disabled={reviewDisabled} /></label>
                 <button
                   className="secondary"
-                  disabled={reviewDisabled}
+                  disabled={reviewDisabled || !returnComment.trim()}
                   onClick={() => decision("reject")}
                 >
                   退修
