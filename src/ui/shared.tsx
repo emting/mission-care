@@ -16,6 +16,7 @@ export const errorLabels: Record<string, string> = {
   return_comment_required: "請填寫退修意見（最多 2000 字）。",
   grant_inactive: "此閱讀權限已撤銷或到期，無需再次撤銷。",
   invalid_expiry: "請選擇有效且尚未到期的閱讀期限。",
+  expiry_before_minimum: "閱讀期限最早須為臺北時間的明天，請重新選擇日期。",
   forbidden: "目前身分無權限執行此操作。",
   not_found: "找不到指定資料，或你沒有操作權限。請核對目標代號與授權範圍。",
   invalid_input: "請確認輸入內容與格式。",

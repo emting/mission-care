@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UiReads } from "../server/ui-reads";
 import type { AdminReads } from "../server/workflows/reads";
@@ -17,7 +17,7 @@ import {
 import { DataTable } from "./admin";
 import { riskLabels, roleLabels, type AdminIdentity } from "./navigation";
 import { canRetryNotification, canRevokeGrant } from "../server/policy";
-import {taipeiCalendarDate} from "../server/taipei-calendar";
+import {taipeiCalendarDate,minimumAccessExpiryDate} from "../server/taipei-calendar";
 type Review = Awaited<ReturnType<UiReads["adminLetter"]>>;
 export function AdminLetter({ value }: { value: Review }) {
   const action = useAction();
@@ -471,7 +471,9 @@ export function AdminAccess({
   const [expiry, setExpiry] = useState(
     ()=>taipeiCalendarDate(new Date(now),30),
   );
-  const [minExpiry]=useState(()=>taipeiCalendarDate(new Date(now),1));
+  const [minExpiry]=useState(()=>minimumAccessExpiryDate(new Date(now)));
+  const expiryInput=useRef<HTMLInputElement>(null);
+  const [expiryValid,setExpiryValid]=useState(true);
   return (
     <>
       <PageHeading
@@ -486,12 +488,16 @@ export function AdminAccess({
           <label>
             核准有效期限
             <input
+              ref={expiryInput}
               type="date"
               value={expiry}
               required
               min={minExpiry}
-              onChange={(e) => setExpiry(e.target.value)}
+              aria-describedby="access-expiry-help"
+              onChange={(e) => {setExpiry(e.target.value);setExpiryValid(e.currentTarget.checkValidity());}}
             />
+            <small id="access-expiry-help">最早為 {minExpiry}（臺北時間），可閱讀至所選日期結束。</small>
+            {!expiryValid && <small role="alert">請選擇有效且不早於最早期限的日期。</small>}
           </label>
         </div>
         <DataTable
@@ -501,8 +507,9 @@ export function AdminAccess({
             row.status === "pending" ? (
               <div className="button-row">
                 <button
-                  disabled={action.pending || !expiry}
+                  disabled={action.pending || !expiry || !expiryValid}
                   onClick={() => {
+                    if(!expiryInput.current?.reportValidity()) return;
                     if (
                       window.confirm(
                         "已透過教會既有流程完成身分核對，並確認授權對象與期限？",
