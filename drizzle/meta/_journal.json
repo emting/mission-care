@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795332927810,
+      "tag": "0000_lethal_gravity",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795332927811,
+      "tag": "0001_safety_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795333153332,
+      "tag": "0002_closed_tigra",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795333153333,
+      "tag": "0003_workflow_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795333893592,
+      "tag": "0004_rainy_pet_avengers",
+      "breakpoints": true
+    }
+  ]
+}

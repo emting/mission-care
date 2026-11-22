@@ -1,0 +1,31 @@
+import {beforeAll,afterAll,it,expect} from 'vitest';
+import {fixture,type Fixture,s,randomUUID} from './workflow-fixture';
+import {createHandler} from '../src/server/http';
+import {MemoryRateLimiter,hash} from '../src/server/security';
+let f:Fixture;
+beforeAll(async()=>{f=await fixture();});
+afterAll(async()=>{await f.pg.close();});
+it('one reader exhausting thirty letter checks cannot rate-limit another authorized reader',async()=>{
+  const letter=await f.published();
+  const [other]=await f.db.insert(s.users).values({}).returning();
+  const otherToken=randomUUID(),sameUserToken=randomUUID();
+  const expiresAt=new Date(+f.clock.now+86400000);
+  await f.db.insert(s.sessions).values([{userId:other.id,tokenHash:hash(otherToken),expiresAt},{userId:f.user.id,tokenHash:hash(sameUserToken),expiresAt}]);
+  await f.db.insert(s.accessGrants).values({userId:other.id,missionaryId:f.a.id,expiresAt});
+  const control=createHandler('letter',()=>f.auth,'https://care.example',new MemoryRateLimiter());
+  expect((await control(f.request('letters/'+letter.id,undefined,undefined,otherToken),letter.id)).status).toBe(200);
+  const route=createHandler('letter',()=>f.auth,'https://care.example',new MemoryRateLimiter());
+  const read=(token:string)=>route(f.request('letters/'+letter.id,undefined,undefined,token),letter.id);
+  for(let i=0;i<30;i++) expect((await read(f.member)).status).toBe(200);
+  expect((await read(otherToken)).status).toBe(200);
+  expect((await read(f.member)).status).toBe(429);
+  expect((await read(sameUserToken)).status).toBe(429);
+  expect((await read(otherToken)).status).toBe(200);
+});
+it('unauthenticated failures remain limited without consuming an authenticated reader budget',async()=>{
+  const letter=await f.published();
+  const route=createHandler('letter',()=>f.auth,'https://care.example',new MemoryRateLimiter(1));
+  expect((await route(new Request('https://care.example/api/letters/'+letter.id),letter.id)).status).toBe(401);
+  expect((await route(new Request('https://care.example/api/letters/'+letter.id),letter.id)).status).toBe(429);
+  expect((await route(f.request('letters/'+letter.id),letter.id)).status).toBe(200);
+});
