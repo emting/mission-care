@@ -2000,3 +2000,14 @@ dd {
     scroll-behavior: auto !important;
   }
 }
+.member-shell {
+  --muted: #43584b;
+  font-size: 16px;
+}
+.member-shell :is(p, small, label, .quiet-link, .muted, .notice, .privacy-note, .eyebrow, .text-button, .back-link) {
+  font-size: 16px;
+}
+.member-shell .member-footer,
+.member-shell .member-footer small {
+  font-size: 14px;
+}
