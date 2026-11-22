@@ -277,7 +277,7 @@ export function MemberMissionary({ value: initial }: { value: Missionary }) {
       {value.letters.length ? (
         <div className="letter-list">
           {value.letters.map((l) => (
-            <Link
+            <a
               href={"/app/letters/" + l.id}
               key={l.id}
               className="panel letter-link"
@@ -286,7 +286,7 @@ export function MemberMissionary({ value: initial }: { value: Missionary }) {
               <h3>{l.title}</h3>
               <p>{l.safeSummary}</p>
               <span className="text-link">閱讀與代禱 →</span>
-            </Link>
+            </a>
           ))}
         </div>
       ) : (

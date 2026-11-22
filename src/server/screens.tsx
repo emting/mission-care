@@ -9,6 +9,7 @@ import { adminCookie, memberCookie } from "./http";
 import { ApiError } from "./services";
 import { UiReads } from "./ui-reads";
 import { adminNavigation } from "../ui/navigation";
+import { MemberLetterBoundary } from "../ui/member-letter-boundary";
 import { AdminShell, AdminListing, AdminOverview } from "../ui/admin";
 import {
   AdminAccess,
@@ -83,10 +84,12 @@ export async function MemberScreen({ parts = [] }: { parts?: string[] }) {
       );
     else if (parts.length === 2 && parts[0] === "letters")
       content = (
-        <MemberLetter
-          value={await reads.memberLetter(token, z.uuid().parse(parts[1]))}
-          donation={await d.governance.cta()}
-        />
+        <MemberLetterBoundary id={parts[1]}>
+          <MemberLetter
+            value={await reads.memberLetter(token, z.uuid().parse(parts[1]))}
+            donation={await d.governance.cta()}
+          />
+        </MemberLetterBoundary>
       );
     else return notFound();
     await d.core.audit(d.core.db, {

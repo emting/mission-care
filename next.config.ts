@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   devIndicators: false,
-  experimental: { authInterrupts: true },
+  experimental: { authInterrupts: true, staleTimes: { dynamic: 0, static: 0 } },
   serverExternalPackages: ["@electric-sql/pglite"],
   async headers() {
     return [
