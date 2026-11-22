@@ -96,7 +96,7 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
       }
       if(parts[1]==='access-requests' && parts[3]==='decision' && method==='POST') {
         const b=z.object({...requestId,approve:z.boolean(),expiresOn:z.string().optional(),expiresAt:z.iso.datetime().optional()}).strict().refine(b=>!b.approve || !!(b.expiresOn || b.expiresAt)).refine(b=>!(b.expiresOn && b.expiresAt)).parse(body);
-        const expiry=b.expiresOn!==undefined?exclusiveTaipeiExpiry(b.expiresOn):new Date(b.expiresAt??d.core.now());
+        const expiry=b.expiresOn!==undefined?exclusiveTaipeiExpiry(b.expiresOn):new Date(b.expiresAt??0);
         if(!expiry) return fail(400,'invalid_expiry');
         return respond(await m.decideAccess(admin,z.uuid().parse(parts[2]),b.approve,expiry,b.request_id));
       }
