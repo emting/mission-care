@@ -17,6 +17,10 @@ it('every missing lockdown target returns 404 without incidents or other side ef
 it('scoped lockdown cannot target another missionary and valid targets still work',async()=>{
   const scoped=await f.staff(['security_auditor'],f.b.id);
   await expect(f.governance.lockdown(scoped.token,{grantId:f.grant.id,reasonCode:'other'},randomUUID())).rejects.toMatchObject({status:404});
+  await expect(f.governance.lockdown(scoped.token,{adminId:f.editor.id,reasonCode:'other'},randomUUID())).rejects.toMatchObject({status:404});
+  await expect(f.governance.lockdown(scoped.token,{reasonCode:'other'},randomUUID())).rejects.toMatchObject({status:400});
+  const letter=await f.draft();
+  await expect(f.governance.lockdown(scoped.token,{letterId:letter.id,reasonCode:'other'},randomUUID())).rejects.toMatchObject({status:404});
   expect(await f.db.select().from(s.securityIncidents)).toHaveLength(0);
   expect(await f.governance.lockdown(f.auditor.token,{grantId:f.grant.id,reasonCode:'other'},randomUUID())).toMatchObject({status:'locked_down'});
 });

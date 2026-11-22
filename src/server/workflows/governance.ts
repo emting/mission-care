@@ -3,7 +3,7 @@ import { and,eq,inArray,sql } from 'drizzle-orm';
 import type { Database } from '../db';
 import * as s from '../db/schema';
 import { WorkflowCore } from './core';
-import { fail } from '../services';
+import { ApiError, fail } from '../services';
 import { hash } from '../security';
 import { z } from 'zod';
 export const securityReasonInput=z.enum(['suspected_disclosure','access_violation','delivery_failure','emergency_lockdown','other']);
@@ -77,7 +77,8 @@ export class Governance {
   async lockdown(token:string|undefined,input:LockdownInput,requestId:string) {
     const c=this.core; const {admin}=await c.auth.adminSession(token);
     if(!securityReasonInput.safeParse(input.reasonCode).success) return fail(400,'invalid_input');
-    return c.operation({actorId:admin.id,action:'security.lockdown',requestId},{...input},async db=>{
+    return c.operation({actorId:admin.id,action:'security.lockdown',requestId,resourceId:input.letterId??input.grantId??input.adminId},{...input},async db=>{
+      if(!input.pauseNotifications && !input.disableAi && !input.letterId && !input.grantId && !input.adminId) return fail(400,'invalid_input');
       if(input.pauseNotifications || input.disableAi) await c.staff(db,token,'lockdown',null,true);
       if(input.pauseNotifications) await this.setting(db,'global_notification_pause',true);
       if(input.disableAi) await this.setting(db,'ai_import_disabled',true);
@@ -96,7 +97,10 @@ export class Governance {
       if(input.adminId) {
         const [target]=await db.select({id:s.admins.id}).from(s.admins).where(eq(s.admins.id,input.adminId));
         if(!target) return fail(404,'not_found');
-        await c.staff(db,token,'lockdown',null,true);
+        await c.staff(db,token,'lockdown',null,true).catch(error=>{
+          if(error instanceof ApiError && error.code==='forbidden') return fail(404,'not_found');
+          throw error;
+        });
         await db.update(s.admins).set({sessionVersion:sql`${s.admins.sessionVersion}+1`}).where(eq(s.admins.id,target.id));
       }
       const [incident]=await db.insert(s.securityIncidents).values({category:'emergency_lockdown',severity:'high',reasonCode:input.reasonCode,reportedBy:admin.id}).returning();
