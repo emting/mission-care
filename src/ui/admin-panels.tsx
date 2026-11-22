@@ -1117,6 +1117,7 @@ export function AdminSettings({
         title="教會設定"
         description="此頁僅顯示服務與目前職務狀態，不提供任意改權或解除安全保護。"
       />
+      {identity.permissions.includes("notification_resume") && <ResumeNotifications recentMfa={identity.recentMfa} />}
       <div className="detail-grid">
         <section className="panel">
           <h2>目前有效職務</h2>
@@ -1154,4 +1155,29 @@ export function AdminSettings({
       </div>
     </>
   );
+}
+export function ResumeNotifications({recentMfa}:{recentMfa:boolean}) {
+  const action=useAction();
+  const [reason,setReason]=useState("");
+  const [confirmed,setConfirmed]=useState(false);
+  return <section className="panel section-gap">
+    <h2>恢復全域通知</h2>
+    <p className="notice">只解除全域暫停，仍會逐次檢查配額、閱讀權限、好友狀態與通知同意。</p>
+    {!recentMfa && <p role="alert">需要近期雙因素驗證，請重新登入後操作。</p>}
+    <form onSubmit={e=>{
+      e.preventDefault();
+      if(!reason || !confirmed || !recentMfa) return;
+      action.run(()=>api("admin/security/resume-notifications",{request_id:crypto.randomUUID(),reasonCode:reason,confirmed:true}),"已解除全域通知暫停，發送仍須通過配額與資格檢查",()=>{setReason("");setConfirmed(false);});
+    }}>
+      <label>恢復原因<select required value={reason} onChange={e=>{setReason(e.target.value);setConfirmed(false);}}>
+        <option value="" disabled>請選擇恢復原因</option>
+        <option value="delivery_failure">通知發送異常已處理</option>
+        <option value="access_violation">存取權限已核對</option>
+        <option value="other">其他安全原因已處理</option>
+      </select></label>
+      <label className="check-row"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} />我已確認恢復原因，了解通知仍需通過各項檢查。</label>
+      <button disabled={!recentMfa || !reason || !confirmed || action.pending}>確認恢復通知</button>
+    </form>
+    <Feedback value={action.feedback} />
+  </section>;
 }

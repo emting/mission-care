@@ -64,6 +64,16 @@ export class Governance {
     const d=rows.find(v=>v.requestedBy && v.approvedBy && v.requestedBy!==v.approvedBy); if(!d) return null;
     try { return {url:officialUrl(d.officialUrl,this.domains).href,external:true}; } catch { return null; }
   }
+  async resumeNotifications(token:string|undefined,input:{reasonCode:string;confirmed:boolean},requestId:string) {
+    const c=this.core; const {admin}=await c.auth.adminSession(token);
+    await c.staff(c.db,token,'notification_resume',null,true);
+    return c.operation({actorId:admin.id,action:'notification.resume',requestId},input,async db=>{
+      await c.staff(db,token,'notification_resume',null,true);
+      if(!securityReasonInput.safeParse(input.reasonCode).success || input.confirmed!==true) return fail(400,'invalid_input');
+      await this.setting(db,'global_notification_pause',false);
+      return {status:'resumed'};
+    });
+  }
   async lockdown(token:string|undefined,input:LockdownInput,requestId:string) {
     const c=this.core; const {admin}=await c.auth.adminSession(token);
     if(!securityReasonInput.safeParse(input.reasonCode).success) return fail(400,'invalid_input');

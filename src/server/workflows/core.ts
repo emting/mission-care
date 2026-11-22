@@ -55,7 +55,7 @@ export class WorkflowCore {
       'letter.create':'draft_edit','letter.edit':'draft_edit','letter.submit':'submit_review','review.decision':'review',
       'letter.publish':'publish','letter.archive':'archive','letter.ai_draft':'draft_edit','media.upload':'draft_edit',
       'access.decision':'access_decide','access.revoke':'access_decide','notification.retry':'assign',
-      'security.lockdown':'lockdown','incident.create':'incident_read','incident.update':'incident_read',
+      'security.lockdown':'lockdown','notification.resume':'notification_resume','incident.create':'incident_read','incident.update':'incident_read',
     } as Record<string,Permission>)[c.action];
     if(c.action==='action.propose') permission=data.action==='donation.change'?'donation_request':'draft_edit';
     if(c.action==='action.approve' && resourceId) {

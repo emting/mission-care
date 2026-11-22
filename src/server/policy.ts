@@ -8,12 +8,12 @@ export function canViewLetter(userId: string|null, m: Missionary, l: { missionar
   return l.missionaryId === m.id && l.status === 'published' && canViewMissionary(userId,m,grants,now) && (l.visibility === 'public' || grants.some(g => g.userId === userId && g.missionaryId === m.id && !g.revokedAt && g.expiresAt > now));
 }
 export const permissions = {
-  church_owner: ['overview','audit','policy_approve','staff_manage'],
+  church_owner: ['overview','audit','policy_approve','staff_manage','notification_resume'],
   mission_lead: ['overview','missionary_read','letter_read','assign','access_decide','publish','archive'],
   editor: ['overview','missionary_read','letter_read','draft_edit','submit_review'],
   reviewer: ['overview','missionary_read','letter_read','review'],
   access_reviewer: ['overview','access_decide'],
-  security_auditor: ['overview','audit','incident_read','lockdown'],
+  security_auditor: ['overview','audit','incident_read','lockdown','notification_resume'],
   finance_link_manager: ['overview','donation_request','donation_approve'],
   support: ['overview','health'],
 } as const;

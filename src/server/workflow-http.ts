@@ -104,6 +104,10 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
         const b=z.object({...requestId,letterId:z.uuid().optional(),grantId:z.uuid().optional(),adminId:z.uuid().optional(),pauseNotifications:z.literal(true).optional(),disableAi:z.literal(true).optional(),reasonCode:code}).strict().refine(b=>b.letterId || b.grantId || b.adminId || b.pauseNotifications || b.disableAi).parse(body);
         return respond(await g.lockdown(admin,b,b.request_id));
       }
+      if(path==='admin/security/resume-notifications' && method==='POST') {
+        const b=z.object({...requestId,reasonCode:code,confirmed:z.literal(true)}).strict().parse(body);
+        return respond(await g.resumeNotifications(admin,b,b.request_id));
+      }
       if(parts[1]==='incidents' && (method==='POST' || method==='PATCH' || method==='DELETE')) {
         const b=incidentInput.parse(body); const id=parts[2]?z.uuid().parse(parts[2]):undefined;
         return respond(await g.incident(admin,id,{...b,status:method==='DELETE'?'closed':b.status},b.request_id));
