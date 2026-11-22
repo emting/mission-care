@@ -37,7 +37,7 @@ it('submit freezes revision; absent consent, task reassignment and stale decisio
   const l=await f.draft(); const t=await f.editorial.submit(f.editor.token,l.id,1,randomUUID());
   await expect(f.editorial.edit(f.editor.token,l.id,1,content,randomUUID())).rejects.toMatchObject({status:409});
   await expect(f.editorial.decide(f.reviewer.token,t.tasks[0].id,2,'approve',true,randomUUID())).rejects.toMatchObject({status:409});
-  await f.editorial.decide(f.reviewer.token,t.tasks[0].id,1,'approve',false,randomUUID()); await f.editorial.decide(f.reviewer2.token,t.tasks[1].id,1,'approve',false,randomUUID());
+  await f.editorial.decide(f.reviewer.token,t.tasks[0].id,1,'approve',false,randomUUID()); await expect(f.editorial.decide(f.reviewer2.token,t.tasks[1].id,1,'approve',false,randomUUID())).rejects.toMatchObject({status:409,code:'consent_required'});
   await expect(f.editorial.publish(f.lead.token,l.id,1,randomUUID())).rejects.toMatchObject({status:409});
 });
 it('member submission requires explicit expiring delegation and does not gain staff privilege',async()=>{

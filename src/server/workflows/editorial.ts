@@ -85,7 +85,10 @@ export class Editorial {
       } else {
         const reviews=await db.select().from(s.letterReviews).where(and(eq(s.letterReviews.letterId,l.id),eq(s.letterReviews.revision,l.revision),eq(s.letterReviews.decision,'approve')));
         const m=await c.missionary(db,l.missionaryId); const required=m.governance==='invite_only' || content.visibility==='restricted' ? 2 : 1;
-        if(new Set(reviews.map(r=>r.reviewerId)).size>=required && reviews.some(r=>r.consentConfirmed)) await db.update(s.letters).set({status:'approved',consentAt:c.now()}).where(eq(s.letters.id,l.id));
+        if(new Set(reviews.map(r=>r.reviewerId)).size>=required) {
+          if(!reviews.some(r=>r.consentConfirmed)) return fail(409,'consent_required');
+          await db.update(s.letters).set({status:'approved',consentAt:c.now()}).where(eq(s.letters.id,l.id));
+        }
       }
       return {id:l.id,revision:l.revision};
     });

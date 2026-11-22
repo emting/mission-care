@@ -41,3 +41,25 @@ it('AI drafting hides revision state until staff scope or member delegation is a
   await expect(f.editorial.aiDraft(f.editor.token,undefined,l.id,99,randomUUID())).rejects.toMatchObject({status:409,code:'revision_conflict'});
   expect((await f.editorial.aiDraft(f.editor.token,undefined,l.id,1,randomUUID())).needs_human_review).toBe(true);
 });
+
+it.each(['restricted','public'] as const)('the final %s approval without consent keeps its task open', async (visibility) => {
+  const l=await f.draft();
+  let revision=1;
+  if(visibility==='public') {
+    await f.db.update(s.missionaries).set({governance:'public'}).where(eq(s.missionaries.id,f.a.id));
+    const proposal=await f.governance.propose(f.editor.token,'letter.public',l.id,1,{consent:true},randomUUID());
+    await f.governance.approve(f.owner.token,proposal.id,randomUUID());
+    revision=2;
+  }
+  const submitted=await f.editorial.submit(f.editor.token,l.id,revision,randomUUID());
+  if(visibility==='restricted') await f.editorial.decide(f.reviewer.token,submitted.tasks[0].id,revision,'approve',false,randomUUID());
+  const task=submitted.tasks.at(-1)!;
+  const reviewer=visibility==='restricted' ? f.reviewer2 : f.reviewer;
+  const requestId=randomUUID();
+  await expect(f.editorial.decide(reviewer.token,task.id,revision,'approve',false,requestId)).rejects.toMatchObject({status:409,code:'consent_required'});
+  const [pending]=await f.db.select().from(s.reviewTasks).where(eq(s.reviewTasks.id,task.id));
+  expect(pending.status).toBe('pending');
+  await f.editorial.decide(reviewer.token,task.id,revision,'approve',true,requestId);
+  await f.editorial.publish(f.lead.token,l.id,revision,randomUUID());
+  expect((await f.auth.letter(f.member,l.id)).id).toBe(l.id);
+});
