@@ -24,8 +24,8 @@ export class Members {
       const auth=new Services(db,async()=>null,'','',c.auth.now);
       if(!(await auth.visibleMissionaries(token)).some(m=>m.id===missionaryId)) return fail(404,'not_found');
       const patch={...(following===undefined?{}:{following}),...(pushOptIn===undefined?{}:{pushOptIn,pushConsentAt:pushOptIn?c.now():null})};
-      await db.insert(s.subscriptions).values({userId:user.id,missionaryId,...patch}).onConflictDoUpdate({target:[s.subscriptions.userId,s.subscriptions.missionaryId],set:patch});
-      if(pushOptIn===false) await c.cancelJobs(db,missionaryId,user.id); return {updated:true};
+      const [subscription]=await db.insert(s.subscriptions).values({userId:user.id,missionaryId,...patch}).onConflictDoUpdate({target:[s.subscriptions.userId,s.subscriptions.missionaryId],set:patch}).returning({following:s.subscriptions.following,pushOptIn:s.subscriptions.pushOptIn});
+      if(pushOptIn===false) await c.cancelJobs(db,missionaryId,user.id); return {updated:true,...subscription};
     });
   }
   async requestAccess(token:string|undefined,missionaryId:string,requestId:string) {

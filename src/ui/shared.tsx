@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { statusLabels } from "./navigation";
 export const errorLabels: Record<string, string> = {
@@ -68,6 +68,7 @@ export async function api<T = unknown>(
   };
 }
 export function useAction(refresh = true) {
+  const inFlight = useRef(false);
   const [pending, setPending] = useState(false),
     [feedback, setFeedback] = useState<{
       ok: boolean;
@@ -81,7 +82,8 @@ export function useAction(refresh = true) {
     text = "操作已完成",
     after?: (data: T) => void,
   ) {
-    if (pending) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setPending(true);
     setFeedback(null);
     try {
@@ -97,6 +99,7 @@ export function useAction(refresh = true) {
           : new ClientError("internal_error", "無法取得");
       setFeedback({ ok: false, text: e.message, id: e.requestId });
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   }

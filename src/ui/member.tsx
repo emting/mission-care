@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UiReads } from "../server/ui-reads";
 import { api, ClientError, Feedback, useAction, Empty } from "./shared";
@@ -204,21 +204,13 @@ export function MemberMissionary({ value: initial }: { value: Missionary }) {
     pushOptIn: initial.pushOptIn,
   });
   const value = { ...initial, ...preferences };
+  useEffect(()=>setPreferences({following:initial.following,pushOptIn:initial.pushOptIn}),[initial.following,initial.pushOptIn]);
   const update = (field: "following" | "pushOptIn", checked: boolean) => {
-    const previous = preferences[field];
-    setPreferences((current) => ({ ...current, [field]: checked }));
-    return action.run(async () => {
-      try {
-        return await api("subscriptions", {
+    return action.run(() => api<{following:boolean;pushOptIn:boolean}>("subscriptions", {
           missionaryId: value.id,
           [field]: checked,
           request_id: crypto.randomUUID(),
-        });
-      } catch (error) {
-        setPreferences((current) => ({ ...current, [field]: previous }));
-        throw error;
-      }
-    }, "偏好已更新");
+        }), "偏好已更新", data=>setPreferences({following:data.following,pushOptIn:data.pushOptIn}));
   };
   return (
     <>
