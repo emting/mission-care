@@ -1840,7 +1840,7 @@ dd {
   }
   .member-footer {
     margin: 0 22px;
-    padding: 22px 0 90px;
+    padding: 22px 0;
     flex-direction: column;
     gap: 8px;
     font-size: 11px;
@@ -2010,4 +2010,9 @@ dd {
 .member-shell .member-footer,
 .member-shell .member-footer small {
   font-size: 14px;
+}
+@media (max-width: 640px) {
+  .member-shell {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
 }
