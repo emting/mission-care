@@ -38,7 +38,7 @@ export async function api<T = unknown>(
   path: string,
   body?: unknown,
   method = body === undefined ? "GET" : "POST",
-): Promise<{ data: T; request_id: string }> {
+): Promise<{ data: T; request_id: string; action_request_id?: string }> {
   let response: Response;
   try {
     response = await fetch("/api/" + path, {
@@ -60,7 +60,12 @@ export async function api<T = unknown>(
       result.error?.code ?? "internal_error",
       result.request_id ?? "無法取得",
     );
-  return result;
+  const actionId = body && typeof body === "object" && "request_id" in body
+    ? body.request_id : undefined;
+  return {
+    ...result,
+    ...(typeof actionId === "string" ? { action_request_id: actionId } : {}),
+  };
 }
 export function useAction(refresh = true) {
   const [pending, setPending] = useState(false),
@@ -68,10 +73,11 @@ export function useAction(refresh = true) {
       ok: boolean;
       text: string;
       id: string;
+      httpId?: string;
     } | null>(null);
   const router = useRouter();
   async function run<T>(
-    work: () => Promise<{ data: T; request_id: string }>,
+    work: () => Promise<{ data: T; request_id: string; action_request_id?: string }>,
     text = "操作已完成",
     after?: (data: T) => void,
   ) {
@@ -80,7 +86,8 @@ export function useAction(refresh = true) {
     setFeedback(null);
     try {
       const result = await work();
-      setFeedback({ ok: true, text, id: result.request_id });
+      setFeedback({ ok: true, text, id: result.action_request_id ?? result.request_id,
+        httpId: result.action_request_id ? result.request_id : undefined });
       after?.(result.data);
       if (refresh) router.refresh();
     } catch (error) {
@@ -108,7 +115,8 @@ export function Feedback({
       <strong>
         {value.ok ? "✓" : "⚠"} {value.text}
       </strong>
-      <small>request_id：{value.id}</small>
+      <small>{value.httpId ? "action_request_id" : "request_id"}：{value.id}</small>
+      {value.httpId && <small>http_request_id：{value.httpId}</small>}
     </div>
   ) : null;
 }

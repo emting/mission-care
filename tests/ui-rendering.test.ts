@@ -1,7 +1,7 @@
 import { it, expect, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { formatDate } from '../src/ui/shared';
+import { formatDate, Feedback } from '../src/ui/shared';
 import { AdminLetter, AdminSecurity } from '../src/ui/admin-panels';
 import { AdminOverview } from '../src/ui/admin';
 import { content } from './workflow-fixture';
@@ -51,4 +51,12 @@ it('lockdown starts with an empty required reason and a disabled submit button',
   const html=renderToStaticMarkup(createElement(AdminSecurity,{canLockdown:true,incidents:{items:[],count:0,next_offset:null}}));
   expect(html).toMatch(/<select name="reasonCode" required=""><option value="" disabled="" selected="">請選擇處置原因<\/option>/);
   expect(html).toMatch(/<button class="danger" disabled="">確認執行安全處置<\/button>/);
+});
+
+it('operation receipts label the action and transport IDs distinctly, retaining transport-only feedback',()=>{
+  expect(renderToStaticMarkup(createElement(Feedback,{value:{ok:true,text:'已完成',id:'fictional-action',httpId:'fictional-http'}})))
+    .toContain('<small>action_request_id：fictional-action</small><small>http_request_id：fictional-http</small>');
+  const error=renderToStaticMarkup(createElement(Feedback,{value:{ok:false,text:'未完成',id:'fictional-http'}}));
+  expect(error).toContain('request_id：fictional-http');
+  expect(error).not.toContain('action_request_id');
 });
