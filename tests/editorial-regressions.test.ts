@@ -25,5 +25,7 @@ it('restricted drafts of previously public letters require new dual control befo
   expect(submitted.tasks).toHaveLength(2);
   await f.editorial.decide(f.reviewer.token,submitted.tasks[0].id,4,'reject',false,randomUUID());
   await makePublic(4);
-  expect((await f.auth.letter(f.member,l.id)).visibility).toBe('public');
+  expect((await f.auth.letter(f.member,l.id)).id).toBe(l.id);
+  const [published]=await f.db.select().from(s.letters).where(eq(s.letters.id,l.id));
+  expect(published).toMatchObject({status:'published',visibility:'public',revision:5});
 });
