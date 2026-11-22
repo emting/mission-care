@@ -104,8 +104,10 @@ export function useAction(refresh = true) {
 }
 export function Feedback({
   value,
+  member = false,
 }: {
   value: ReturnType<typeof useAction>["feedback"];
+  member?: boolean;
 }) {
   return value ? (
     <div
@@ -115,8 +117,10 @@ export function Feedback({
       <strong>
         {value.ok ? "✓" : "⚠"} {value.text}
       </strong>
-      <small>{value.httpId ? "action_request_id" : "request_id"}：{value.id}</small>
-      {value.httpId && <small>http_request_id：{value.httpId}</small>}
+      {member ? (!value.ok && <small>參考編號：{value.id.slice(0,8)}</small>) : <>
+        <small>{value.httpId ? "action_request_id" : "request_id"}：{value.id}</small>
+        {value.httpId && <small>http_request_id：{value.httpId}</small>}
+      </>}
     </div>
   ) : null;
 }

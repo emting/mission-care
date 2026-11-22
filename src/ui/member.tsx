@@ -130,7 +130,7 @@ export function MemberLogin({ devEnabled }: { devEnabled: boolean }) {
             </button>
           </div>
         )}
-        <Feedback value={action.feedback} />
+        <Feedback member value={action.feedback} />
       </section>
     </MemberShell>
   );
@@ -274,7 +274,7 @@ export function MemberMissionary({ value: initial }: { value: Missionary }) {
         >
           申請或更新觀看授權 →
         </button>
-        <Feedback value={action.feedback} />
+        <Feedback member value={action.feedback} />
       </section>
       <div className="section-heading">
         <h2>近況與代禱</h2>
@@ -378,7 +378,7 @@ export function MemberLetter({
               本週有 {value.stats.distinct_members} 位夥伴一同守望。
             </p>
           )}
-          <Feedback value={action.feedback} />
+          <Feedback member value={action.feedback} />
         </section>
         <aside className="privacy-note">
           <span aria-hidden="true">◇</span>
@@ -481,11 +481,11 @@ export function MemberPrivacy({ authenticated }: { authenticated: boolean }) {
         ) : (
           <p className="notice">
             {completed
-              ? "申請已受理，帳號已停用。後續將依保留政策處理，請保存下方 request_id。"
+              ? "申請已受理，帳號已停用。後續將依保留政策處理。"
               : "請先登入，才能登出服務或提出刪除申請。"}
           </p>
         )}
-        <Feedback value={action.feedback} />
+        <Feedback member value={action.feedback} />
       </section>
     </>
   );
