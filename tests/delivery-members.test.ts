@@ -50,13 +50,13 @@ it('PRD §12.4 and admin §16.9 撤權／撤稿即時阻斷 API 與 queued jobs'
   const second=await f.published();await f.editorial.archive(f.lead.token,second.id,1,randomUUID());await expect(f.auth.letter(f.member,second.id)).rejects.toMatchObject({status:404});
 });
 it('PRD §12.13 forged/replayed LINE webhook is rejected or deduped; follow/unfollow/block',async()=>{
-  const event={webhookEventId:'fictional-event',type:'unfollow',source:{userId:'fictional-line-subject'}};const raw=Buffer.from(JSON.stringify({events:[event]}));
+  const event={webhookEventId:'fictional-event',type:'unfollow',timestamp:100,source:{userId:'fictional-line-subject'}};const raw=Buffer.from(JSON.stringify({events:[event]}));
   await expect(f.delivery.webhook(raw,'bad')).rejects.toMatchObject({status:401});
   const sign=(bytes:Buffer)=>createHmac('sha256','webhook-secret').update(bytes).digest('base64');
   await f.delivery.webhook(raw,sign(raw));await f.delivery.webhook(raw,sign(raw));expect(await f.db.select().from(s.webhookEvents)).toHaveLength(1);
   let [identity]=await f.db.select().from(s.lineIdentities);expect(identity.friendEligible).toBe(false);expect(identity.blockedAt).not.toBeNull();
-  const follow=Buffer.from(JSON.stringify({events:[{...event,webhookEventId:'follow-event',type:'follow'}]}));await f.delivery.webhook(follow,sign(follow));[identity]=await f.db.select().from(s.lineIdentities);expect(identity.friendEligible).toBe(true);expect(identity.blockedAt).toBeNull();
-  const block=Buffer.from(JSON.stringify({events:[{...event,webhookEventId:'block-event',type:'block'}]}));await f.delivery.webhook(block,sign(block));[identity]=await f.db.select().from(s.lineIdentities);expect(identity.friendEligible).toBe(false);
+  const follow=Buffer.from(JSON.stringify({events:[{...event,webhookEventId:'follow-event',type:'follow',timestamp:200}]}));await f.delivery.webhook(follow,sign(follow));[identity]=await f.db.select().from(s.lineIdentities);expect(identity.friendEligible).toBe(true);expect(identity.blockedAt).toBeNull();
+  const block=Buffer.from(JSON.stringify({events:[{...event,webhookEventId:'block-event',type:'block',timestamp:300}]}));await f.delivery.webhook(block,sign(block));[identity]=await f.db.select().from(s.lineIdentities);expect(identity.friendEligible).toBe(false);
 });
 it('internal dispatch requires independent shared secret, rate limit and safe request ID',async()=>{
   const missing=await f.route(new Request(origin+'/api/internal/dispatch',{method:'POST'}));expect(missing.status).toBe(401);expect((await missing.json()).request_id).toBeTruthy();

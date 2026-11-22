@@ -4,7 +4,7 @@ import { Services, fail } from "./services";
 import * as s from "./db/schema";
 import { usedLiffTokens } from "./db/workflow-schema";
 import { encryptSecret, hash, randomToken } from "./security";
-import { lineFriendship } from './line-friendship';
+import { lineFriendship, rememberIdentityFriendship } from './line-friendship';
 
 export type LiffVerifier = (token: string, channel: string) => Promise<unknown>;
 export const verifyLiff: LiffVerifier = async (token, channel) => {
@@ -87,15 +87,17 @@ export async function loginLiff(
     if (!userId) {
       const [user] = await tx.insert(s.users).values({}).returning();
       userId = user.id;
-      await tx
+      const {timestamp,...friendship}=await lineFriendship(tx,hash(claims.sub));
+      const [createdIdentity]=await tx
         .insert(s.lineIdentities)
         .values({
           userId,
           provider: channel,
           subHash: hash(claims.sub),
           encryptedSub: encryptSecret(claims.sub, key),
-          ...await lineFriendship(tx,hash(claims.sub)),
-        });
+          ...friendship,
+        }).returning({id:s.lineIdentities.id});
+      await rememberIdentityFriendship(tx,createdIdentity.id,friendship.friendEligible,timestamp,now);
     } else {
       await tx
         .update(s.lineIdentities)

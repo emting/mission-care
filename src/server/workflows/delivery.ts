@@ -8,7 +8,7 @@ import { decryptSecret,hash } from '../security';
 import { canViewLetter } from '../policy';
 import { fail } from '../services';
 import type { Database } from '../db';
-import { rememberLineFriendship } from '../line-friendship';
+import { rememberLineFriendship, rememberIdentityFriendship } from '../line-friendship';
 export interface MessagingClient { send(subject:string,text:string,retryKey:string):Promise<'accepted'|'retryable'|'permanent'|'quota'> }
 export class LineMessagingClient implements MessagingClient {
   constructor(private accessToken:string) {}
@@ -22,7 +22,7 @@ export class LineMessagingClient implements MessagingClient {
   }
 }
 export function secretMatches(received:string|null,expected:string) { if(!received || !expected) return false; return timingSafeEqual(Buffer.from(hash(received),'hex'),Buffer.from(hash(expected),'hex')); }
-const webhookSchema=z.object({events:z.array(z.object({webhookEventId:z.string().min(1).max(200),type:z.string().max(40),timestamp:z.number().optional(),source:z.object({userId:z.string().min(1).max(200)}).passthrough()}).passthrough()).max(100)}).passthrough();
+const webhookSchema=z.object({events:z.array(z.object({webhookEventId:z.string().min(1).max(200),type:z.string().max(40),timestamp:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),source:z.object({userId:z.string().min(1).max(200)}).passthrough()}).passthrough()).max(100)}).passthrough();
 export class Delivery {
   constructor(public core:WorkflowCore,private client:MessagingClient,private subjectKey:string,private webhookSecret:string) {}
   async eligible(db:Database,job:typeof s.deliveryJobs.$inferSelect) {
@@ -80,9 +80,14 @@ export class Delivery {
       if(!row) return;
       const follow=event.type==='follow'; const unfollow=event.type==='unfollow' || event.type==='block';
       if(follow || unfollow) {
-        await rememberLineFriendship(db,hash(event.source.userId),follow,this.core.now());
-        const identities=await db.update(s.lineIdentities).set({friendEligible:follow,blockedAt:follow?null:this.core.now()}).where(eq(s.lineIdentities.subHash,hash(event.source.userId))).returning();
-        if(unfollow) for(const identity of identities) await db.update(s.deliveryJobs).set({status:'cancelled'}).where(and(eq(s.deliveryJobs.userId,identity.userId),inArray(s.deliveryJobs.status,['pending','failed'])));
+        const now=this.core.now();
+        if(await rememberLineFriendship(db,hash(event.source.userId),follow,event.timestamp,now)) {
+          const identities=await db.select({id:s.lineIdentities.id,userId:s.lineIdentities.userId}).from(s.lineIdentities).where(eq(s.lineIdentities.subHash,hash(event.source.userId)));
+          for(const identity of identities) if(await rememberIdentityFriendship(db,identity.id,follow,event.timestamp,now)) {
+            await db.update(s.lineIdentities).set({friendEligible:follow,blockedAt:follow?null:now}).where(eq(s.lineIdentities.id,identity.id));
+            if(unfollow) await db.update(s.deliveryJobs).set({status:'cancelled'}).where(and(eq(s.deliveryJobs.userId,identity.userId),inArray(s.deliveryJobs.status,['pending','failed'])));
+          }
+        }
       }
       await this.core.audit(db,{actorId:row.id,action:'webhook.process',requestId:randomUUID(),resourceId:row.id});
     });
