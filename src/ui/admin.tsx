@@ -454,6 +454,7 @@ const columns: Record<string, { key: string; label: string }[]> = {
     { key: "createdAt", label: "申請時間" },
   ],
   audit: [
+    { key: "actorLabel", label: "操作者" },
     { key: "action", label: "操作紀錄" },
     { key: "outcome", label: "結果" },
     { key: "requestId", label: "request_id" },

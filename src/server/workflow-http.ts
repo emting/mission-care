@@ -26,13 +26,14 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
     const request_id=randomUUID(); const headers=new Headers({'Cache-Control':'no-store','Content-Type':'application/json','X-Request-Id':request_id});
     const respond=async(data:unknown,status=200)=>{
       if(d) {
-        try { await d.core.db.insert(auditEvents).values({actorType:'request',action:'api.workflow.'+parts[0],requestId:request_id,outcome:'success'}); }
+        try { await d.core.db.insert(auditEvents).values({actorId,actorType,action:'api.workflow.'+parts[0],requestId:request_id,outcome:'success'}); }
         catch { return new Response(JSON.stringify({error:{code:'internal_error'},request_id}),{status:500,headers}); }
       }
       return new Response(JSON.stringify({data,request_id}),{status,headers});
     };
     const path=new URL(req.url).pathname.replace(/^\/api\//,''); const parts=path.split('/'); const method=req.method;
     let d:WorkflowDependencies|undefined;
+    let actorId:string|undefined; let actorType='request';
     try {
       if(!limiter.consume(path.startsWith('grants/request')?'grants/request':parts.slice(0,2).join('/'))) return fail(429,'rate_limited');
       if(path==='internal/dispatch') {
@@ -51,8 +52,8 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
       let body:unknown={}; if(raw) {try{body=JSON.parse(raw);}catch{return fail(400,'invalid_input');}}
       d=deps(); const {core:c,editorial:e,members:m,delivery:delivery,governance:g,reads:r,media}=d;
       const member=cookie(req,memberCookie),admin=cookie(req,adminCookie);
-      if(parts[0]==='admin') await c.auth.adminSession(admin);
-      else if(path!=='donations/cta' && parts[0]!=='media') await c.auth.member(member);
+      if(parts[0]==='admin') { actorId=(await c.auth.adminSession(admin)).admin.id; actorType='staff'; }
+      else if(path!=='donations/cta' && parts[0]!=='media') { actorId=(await c.auth.member(member)).id; actorType='member'; }
       if(path==='letters' && method==='POST') {
         const b=z.object({...requestId,missionaryId:z.uuid(),content:contentInput}).strict().parse(body); return respond(await e.create(undefined,member,b.missionaryId,b.content,b.request_id),201);
       }
@@ -118,7 +119,7 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
       return fail(404,'not_found');
     } catch(error) {
       const status=error instanceof ApiError?error.status:error instanceof z.ZodError?400:500;
-      if(d) {try{await d.core.db.insert(auditEvents).values({actorType:'request',action:'api.denied',requestId:request_id,outcome:String(status)});}catch{/* Preserve the original safe response if audit storage is unavailable. */}}
+      if(d) {try{await d.core.db.insert(auditEvents).values({actorId,actorType,action:'api.denied',requestId:request_id,outcome:String(status)});}catch{/* Preserve the original safe response if audit storage is unavailable. */}}
       return new Response(JSON.stringify({error:{code:error instanceof ApiError?error.code:status===400?'invalid_input':'internal_error'},request_id}),{status,headers});
     }
   };

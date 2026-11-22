@@ -4,6 +4,7 @@ import * as s from '../db/schema';
 import { WorkflowCore } from './core';
 import { ApiError,fail } from '../services';
 import type { Permission } from '../policy';
+import { hash } from '../security';
 export type ReadKind='tasks'|'missionaries'|'letters'|'access-requests'|'audit'|'notification-jobs'|'incidents';
 export const pageInput={limit:50,maxOffset:10000};
 export class AdminReads {
@@ -41,7 +42,8 @@ export class AdminReads {
       [{total}]=await c.db.select({total:count()}).from(s.securityIncidents).where(where);
     } else {
       const where=missionaryFilter(s.auditEvents.missionaryId);
-      items=await c.db.select({id:s.auditEvents.id,action:s.auditEvents.action,outcome:s.auditEvents.outcome,missionaryId:s.auditEvents.missionaryId,requestId:s.auditEvents.requestId,createdAt:s.auditEvents.createdAt}).from(s.auditEvents).where(where).orderBy(desc(s.auditEvents.createdAt),s.auditEvents.id).limit(limit).offset(offset);
+      const events=await c.db.select({id:s.auditEvents.id,action:s.auditEvents.action,outcome:s.auditEvents.outcome,missionaryId:s.auditEvents.missionaryId,requestId:s.auditEvents.requestId,createdAt:s.auditEvents.createdAt,staffEmail:s.admins.email,memberId:s.users.id,actorType:s.auditEvents.actorType}).from(s.auditEvents).leftJoin(s.admins,eq(s.admins.id,s.auditEvents.actorId)).leftJoin(s.users,eq(s.users.id,s.auditEvents.actorId)).where(where).orderBy(desc(s.auditEvents.createdAt),s.auditEvents.id).limit(limit).offset(offset);
+      items=events.map(({staffEmail,memberId,actorType,...event})=>({...event,actorLabel:staffEmail??(memberId?`U-${hash(memberId).slice(0,12).toUpperCase()}`:actorType==='request'?'未登入／無法辨識':'系統')}));
       [{total}]=await c.db.select({total:count()}).from(s.auditEvents).where(where);
     }
     await c.audit(c.db,{actorId:scope.admin.id,action:'admin.read.'+kind,requestId});

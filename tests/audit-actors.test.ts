@@ -1,0 +1,32 @@
+import {beforeAll,afterAll,it,expect} from 'vitest';
+import {fixture,type Fixture,s,randomUUID,eq} from './workflow-fixture';
+import {hash} from '../src/server/security';
+let f:Fixture;
+beforeAll(async()=>{f=await fixture();});
+afterAll(async()=>{await f.pg.close();});
+it('denied self approval retains its authenticated staff actor on api.denied/403',async()=>{
+  const letter=await f.draft();
+  const submitted=await f.editorial.submit(f.editor.token,letter.id,letter.revision,randomUUID());
+  await f.db.insert(s.staffAssignments).values({adminId:f.editor.id,role:'reviewer',missionaryId:f.a.id,expiresAt:new Date(+f.clock.now+86400000)});
+  const response=await f.route(f.request('admin/reviews/'+submitted.tasks[0].id+'/decision',{request_id:randomUUID(),expected_revision:letter.revision,decision:'approve',consent:true},f.editor.token));
+  expect(response.status).toBe(403);
+  const receipt=await response.json();
+  const [audit]=await f.db.select().from(s.auditEvents).where(eq(s.auditEvents.requestId,receipt.request_id));
+  expect(audit).toMatchObject({actorId:f.editor.id,actorType:'staff',action:'api.denied',outcome:'403'});
+});
+it('audit API identifies staff by email and members by safe code, with safe anonymous/system labels',async()=>{
+  const staffId=randomUUID(), memberId=randomUUID(), unknownId=randomUUID(), systemId=randomUUID();
+  await f.core.audit(f.db,{actorId:f.editor.id,action:'fictional.staff',requestId:staffId});
+  await f.core.audit(f.db,{actorId:f.user.id,action:'fictional.member',requestId:memberId});
+  await f.db.insert(s.auditEvents).values([{actorType:'request',action:'api.denied',requestId:unknownId,outcome:'401'},{actorType:'system',action:'fictional.system',requestId:systemId,outcome:'success'}]);
+  const response=await f.route(f.request('admin/audit?limit=50',undefined,f.auditor.token));
+  expect(response.status).toBe(200);
+  const body=await response.json();
+  const events=body.data.items as {requestId:string;actorLabel:string}[];
+  const [staff]=await f.db.select().from(s.admins).where(eq(s.admins.id,f.editor.id));
+  expect(events.find(e=>e.requestId===staffId)?.actorLabel).toBe(staff.email);
+  expect(events.find(e=>e.requestId===memberId)?.actorLabel).toBe('U-'+hash(f.user.id).slice(0,12).toUpperCase());
+  expect(events.find(e=>e.requestId===unknownId)?.actorLabel).toBe('未登入／無法辨識');
+  expect(events.find(e=>e.requestId===systemId)?.actorLabel).toBe('系統');
+  expect(JSON.stringify(body)).not.toMatch(/fictional-line-subject|subHash|encryptedSub|passwordHash|totpSecret/);
+});
