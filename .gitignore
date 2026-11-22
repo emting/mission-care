@@ -5,3 +5,6 @@ node_modules/
 *.tsbuildinfo
 coverage/
 private-media/
+.local-data/
+playwright-report/
+test-results/

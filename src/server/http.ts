@@ -5,6 +5,7 @@ import { Services, ApiError, fail } from './services';
 import { verifyLine } from './line';
 import { MemoryRateLimiter, type RateLimiter } from './security';
 import { auditEvents } from './db/schema';
+import { loginLiff, verifyLiff, type LiffVerifier } from './liff-auth';
 export const memberCookie = '__Host-mc_member';
 export const adminCookie = '__Host-mc_admin';
 export function cookie(req: Request, name: string) { return req.headers.get('cookie')?.split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='))?.slice(name.length+1); }
@@ -15,8 +16,8 @@ const schemas = {
   password:z.object({email:z.email().max(254),password:z.string().min(1).max(1024)}).strict(),
   mfa:z.object({code:z.string().regex(/^\d{6}$/)}).strict(),
 };
-export type Endpoint = 'challenge'|'line'|'logout'|'password'|'mfa'|'adminLogout'|'overview'|'missionaries'|'letters'|'letter';
-export function createHandler(endpoint: Endpoint, service: () => Services, origin: string, limiter: RateLimiter) {
+export type Endpoint = 'challenge'|'line'|'liff'|'logout'|'password'|'mfa'|'adminLogout'|'overview'|'missionaries'|'letters'|'letter';
+export function createHandler(endpoint: Endpoint, service: () => Services, origin: string, limiter: RateLimiter, liff = {verifier:verifyLiff as LiffVerifier,channel:process.env.LINE_LIFF_CHANNEL_ID ?? process.env.LINE_LOGIN_CHANNEL_ID ?? '',key:process.env.LINE_SUBJECT_ENC_KEY ?? ''}) {
   return async (req: Request, id?: string) => {
     const request_id = randomUUID(); const headers = new Headers({'Cache-Control':'no-store','Content-Type':'application/json','X-Request-Id':request_id});
     const respond = async (data: unknown,status=200) => {
@@ -34,6 +35,7 @@ export function createHandler(endpoint: Endpoint, service: () => Services, origi
       switch(endpoint) {
         case 'challenge': { const nonce = await svc.challenge(); headers.set('Set-Cookie',setCookie('__Host-mc_nonce',nonce,300)); return respond({nonce}); }
         case 'line': { const b = schemas.line.parse(body); if (cookie(req,'__Host-mc_nonce') !== b.nonce) return fail(401,'invalid_identity'); const token = await svc.loginLine(b.idToken,b.nonce); headers.set('Set-Cookie',setCookie(memberCookie,token,3600)); return respond({authenticated:true}); }
+        case 'liff': { const b = schemas.line.parse(body); if (cookie(req,'__Host-mc_nonce') !== b.nonce) return fail(401,'invalid_identity'); const token = await loginLiff(svc,b.idToken,b.nonce,liff.channel,liff.key,liff.verifier); headers.append('Set-Cookie',setCookie('__Host-mc_nonce','',0)); headers.append('Set-Cookie',setCookie(memberCookie,token,3600)); return respond({authenticated:true}); }
         case 'logout': await svc.logout(member ?? ''); headers.set('Set-Cookie',setCookie(memberCookie,'',0)); return respond({authenticated:false});
         case 'password': { const b = schemas.password.parse(body); const token = await svc.passwordLogin(b.email,b.password); headers.set('Set-Cookie',setCookie(adminCookie,token,300)); return respond({aal:'aal1',mfa_required:true}); }
         case 'mfa': { const b = schemas.mfa.parse(body); const token = await svc.mfa(admin,b.code); headers.set('Set-Cookie',setCookie(adminCookie,token,1800)); return respond({aal:'aal2'}); }

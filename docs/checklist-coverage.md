@@ -27,7 +27,7 @@ All fixtures are fictional. `pnpm test` applies **all checked-in migrations** to
 
 | # | Checklist | Test file / extent |
 | --- | --- | --- |
-| 1 | Anonymous admin gets no protected data | `security.test.ts`: unauthenticated overview rejected; `/admin` remains static login placeholder, visual/navigation verification deferred |
+| 1 | Anonymous admin gets no protected data | `security.test.ts`: unauthenticated overview rejected; Step 3 server-rendered pages redirect to the separate staff login |
 | 2 | LINE alone cannot use staff APIs | `security.test.ts`, `editorial.test.ts` |
 | 3 | aal1 cannot perform admin actions | `security.test.ts`: MFA required, bad code fails, old aal1 invalidated; UI cancellation deferred |
 | 4 | No cross-scope inference via search/page/count/media | `security.test.ts`, `governance-reads.test.ts`, `ai-media.test.ts` |
@@ -38,12 +38,20 @@ All fixtures are fictional. `pnpm test` applies **all checked-in migrations** to
 | 9 | Revoke/archive re-evaluate API/media/queue/cache | `security.test.ts`, `ai-media.test.ts`, `delivery-members.test.ts`, `governance-reads.test.ts`; no-store headers tested, deployed CDN/browser cache behavior deferred |
 | 10 | Logout/disabled/expired staff invalidates open tabs | `security.test.ts`: server-side session generation, enabled and assignment expiry; open-tab UX deferred |
 | 11 | Replay/concurrent action once, audited | `editorial.test.ts`, `delivery-members.test.ts`: atomic idempotency and live-scope replay recheck |
-| 12 | Source failures unavailable, not 0 | `governance-reads.test.ts`: injected source failure; actual dashboard rendering deferred |
-| 13 | Keyboard access and warnings not color-only | **UI-only, deferred** |
+| 12 | Source failures unavailable, not 0 | `governance-reads.test.ts`: injected source failure; dashboard renders separate unavailable/unauthorized/empty states |
+| 13 | Keyboard access and warnings not color-only | Step 3 includes labels, skip links, focus rings, native keyboard controls and text/icon warnings. Six screens visually inspected; complete assistive-technology/WCAG audit remains a release gate |
 | 14 | No original text/full UID/path/token in logs | `governance-reads.test.ts`: metadata audit assertions and immutability; external host/APM log configuration is an operational check |
 | 15 | Lockdown/archive/pause/incident/post-review | `governance-reads.test.ts`, `delivery-members.test.ts`: service controls and post-review alert; human exercise deferred |
-| 16 | Fictional data and inspectable evidence | All six `*.test.ts` files, checked-in migrations and this map; no real identities/missionaries used |
+| 16 | Fictional data and inspectable evidence | All eight `*.test.ts` files, checked-in migrations, fictional local seed and this map; no real identities/missionaries used |
 
 ## Additional boundaries
 
-The SQL migrations and the same services run in PGlite tests; no live LINE endpoint or object-store service was contacted. Tests exercise injected LINE/AI/storage dependencies and route-handler factories, not a browser or deployed proxy. Production application DB roles, secret management, independent audit storage/retention, privacy fulfillment, recovery drills, distributed rate limiting, real LINE credentials/Provider ownership and governance/finance approvals remain release gates. No claim of security certification or complete PRD acceptance is made.
+The SQL migrations and the same services run in PGlite tests; no live LINE endpoint or object-store service was contacted. Vitest exercises injected LINE/AI/storage dependencies and route-handler factories. Step 3 additionally exercises the actual local HTTPS/PGlite app in a fresh browser, not a deployed proxy. Production application DB roles, secret management, independent audit storage/retention, privacy fulfillment, recovery drills, distributed rate limiting, real LINE credentials/Provider ownership and governance/finance approvals remain release gates. No claim of security certification or complete PRD acceptance is made.
+
+## Step 3 additions
+
+- `tests/liff.test.ts`: fresh server-verified ID token, exact channel, issuer/expiry/fresh iat, fake token, missing/browser-mismatched/expired/consumed challenge, Origin rejection, concurrent token replay, hash-only persistence and secure cookies. The original nonce-required `/api/auth/line` tests are retained unchanged.
+- `tests/ui.test.ts`: member-safe projections, exact visibility and archive checks, personal daily prayer state and suppressed counts, independent follow/push state, empty lists, scoped original-text permission, author identification, hidden navigation permissions, scoped notification filtering and production-disabled mock login.
+- `scripts/visual-check.ts`: real local UI with fresh Chromium; independent follow/push controls, prayer state surviving reload, hidden small counts/disabled donation CTA, staff password→TOTP forms, overview, neutral notifications/preferences tabs, review consent gating, direct-page 403, no-store and browser errors. Screenshots live outside the repository at `~/work/screenshots/`.
+- Visual evidence: `member-list.png`, `member-letter.png`, `admin-login.png`, `admin-overview.png`, `admin-letter-review.png`, `admin-notifications.png`.
+- Still not certified: live LIFF/LINE login and delivery, deployed proxy/CDN cache behavior, every browser/screen reader, complete keyboard-only coverage, audit retention, production data removal and backups. Screenshots and local checks are not substitutes for those exercises.

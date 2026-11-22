@@ -23,6 +23,19 @@
       "tag": "0002_closed_tigra",
       "breakpoints": true
     },
-    {"idx":3,"version":"7","when":1795333153333,"tag":"0003_workflow_guards","breakpoints":true}
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795333153333,
+      "tag": "0003_workflow_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795333893592,
+      "tag": "0004_rainy_pet_avengers",
+      "breakpoints": true
+    }
   ]
 }

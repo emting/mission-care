@@ -1,5 +1,8 @@
 import { pgTable, uuid, text, integer, timestamp, unique, jsonb } from 'drizzle-orm/pg-core';
 import { users, missionaries, admins, letters } from './schema';
+export const usedLiffTokens = pgTable('mc_used_liff_tokens', {
+  tokenHash: text('token_hash').primaryKey(), expiresAt: timestamp('expires_at',{withTimezone:true}).notNull(),
+});
 export const submitterAssignments = pgTable('mc_submitter_assignments', {
   id: uuid().primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
