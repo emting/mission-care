@@ -162,7 +162,7 @@ export function MemberList({ items }: { items: List }) {
       </div>
       {items.length ? (
         <div className="mission-grid">
-          {items.map((m, i) => (
+          {items.map((m, i) => m.locked ? <LockedMissionary key={m.id} value={m} /> : (
             <Link
               href={"/app/missionaries/" + m.id}
               key={m.id}
@@ -198,6 +198,14 @@ export function MemberList({ items }: { items: List }) {
       </aside>
     </>
   );
+}
+function LockedMissionary({value}:{value:List[number]}) {
+  const action=useAction();
+  return <section className="mission-card"><div className="mission-body">
+    <span className="eyebrow">{value.region}</span><h3>{value.code}</h3><p>🔒 {value.accessStatus}</p>
+    {value.canRequest && <button disabled={action.pending} onClick={()=>action.run(()=>api('grants/request',{missionaryId:value.id,request_id:crypto.randomUUID()}),'申請已送出，將由教會核對後處理')}>重新申請閱讀權限</button>}
+    <Feedback member value={action.feedback} />
+  </div></section>;
 }
 export function MemberMissionary({ value: initial }: { value: Missionary }) {
   const action = useAction();

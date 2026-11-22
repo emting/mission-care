@@ -34,6 +34,11 @@ export class Members {
     return c.operation({actorId:user.id,action:'access.request',requestId},{missionaryId},async db=>{
       const [m]=await db.select().from(s.missionaries).where(and(eq(s.missionaries.id,missionaryId),eq(s.missionaries.active,true)));
       if(m && m.governance!=='offline') {
+        if(m.governance==='invite_only') {
+          const [grant]=await db.select({id:s.accessGrants.id}).from(s.accessGrants).where(and(eq(s.accessGrants.userId,user.id),eq(s.accessGrants.missionaryId,missionaryId)));
+          const [history]=await db.select({id:s.accessRequests.id}).from(s.accessRequests).where(and(eq(s.accessRequests.userId,user.id),eq(s.accessRequests.missionaryId,missionaryId)));
+          if(!grant && !history) return {accepted:true};
+        }
         const [old]=await db.select().from(s.accessRequests).where(and(eq(s.accessRequests.userId,user.id),eq(s.accessRequests.missionaryId,missionaryId),eq(s.accessRequests.status,'pending')));
         if(!old) await db.insert(s.accessRequests).values({userId:user.id,missionaryId});
       }
