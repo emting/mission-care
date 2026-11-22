@@ -480,6 +480,7 @@ const columns: Record<string, { key: string; label: string }[]> = {
 function cell(key: string, value: unknown) {
   if (key === "active") return value ? "✓ 已啟用" : "— 未啟用";
   if (value === null || value === undefined) return "—";
+  if (key === "reasonCode") return statusLabels[String(value)] ?? "其他原因";
   if (["createdAt", "dueAt", "expiresAt"].includes(key))
     return formatDate(String(value));
   if (
@@ -509,8 +510,8 @@ export function DataTable({
 }) {
   if (!items.length) return <Empty />;
   return (
-    <div className="table-scroll">
-      <table>
+    <div className="table-scroll admin-data-scroll">
+      <table className="admin-data-table">
         <caption className="sr-only">授權範圍內資料列表</caption>
         <thead>
           <tr>
@@ -526,9 +527,9 @@ export function DataTable({
           {(items as Row[]).map((row, i) => (
             <tr key={String(row.id ?? i)}>
               {columns[kind].map((c) => (
-                <td key={c.key}>{c.key==="targetLabel" && typeof row.targetHref==="string" ? <Link href={row.targetHref}>{cell(c.key,row[c.key])}</Link> : cell(c.key, row[c.key])}</td>
+                <td key={c.key} data-label={c.label}><span className={`table-value${["actorLabel","requestId","createdAt","dueAt","expiresAt"].includes(c.key)?" table-nowrap":""}`}>{c.key==="targetLabel" && typeof row.targetHref==="string" ? <Link href={row.targetHref}>{cell(c.key,row[c.key])}</Link> : cell(c.key, row[c.key])}</span></td>
               ))}
-              {actions && <td>{actions(row)}</td>}
+              {actions && <td data-label="操作"><div className="table-value">{actions(row)}</div></td>}
             </tr>
           ))}
         </tbody>

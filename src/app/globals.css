@@ -1191,6 +1191,19 @@ td .text-link {
   font-size: 11px;
   white-space: nowrap;
 }
+.admin-data-table td {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.admin-data-table .table-nowrap,
+.admin-data-table button {
+  white-space: nowrap;
+}
+.admin-data-table button {
+  flex-shrink: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 .pagination {
   display: flex;
   justify-content: space-between;
@@ -1992,6 +2005,60 @@ dd {
   }
   .error-state {
     padding: 28px;
+  }
+}
+@media (max-width: 767px) {
+  .admin-data-scroll {
+    margin: 0;
+    overflow: visible;
+  }
+  .admin-data-table,
+  .admin-data-table tbody,
+  .admin-data-table tr {
+    display: block;
+    width: 100%;
+  }
+  .admin-data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .admin-data-table tr {
+    margin: 14px 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px 14px;
+  }
+  .admin-data-table td {
+    display: grid;
+    gap: 6px;
+    max-width: none;
+    padding: 12px 0;
+    font-size: 14px;
+  }
+  .admin-data-table td:last-child {
+    border-bottom: 0;
+  }
+  .admin-data-table td::before {
+    content: attr(data-label);
+    color: #5d705d;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .admin-data-table .table-value {
+    display: block;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .admin-data-table td code {
+    font-size: 13px;
+  }
+  .admin-data-table button {
+    min-height: 44px;
+    font-size: 14px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -561,8 +561,8 @@ export function AdminAccess({
       <section className="panel section-gap">
         <h2>已授權紀錄</h2>
         {grants.length ? (
-          <div className="table-scroll">
-            <table>
+          <div className="table-scroll admin-data-scroll">
+            <table className="admin-data-table">
               <thead>
                 <tr>
                   <th>授權代號</th>
@@ -577,21 +577,21 @@ export function AdminAccess({
               <tbody>
                 {grants.map((g) => (
                   <tr key={g.id}>
-                    <td>
+                    <td data-label="授權代號"><span className="table-value">
                       <code title={g.id}>{g.id.slice(0, 8)}</code>
-                    </td>
-                    <td><code>{g.missionaryCode}</code></td>
-                    <td><code>{g.memberCode}</code></td>
-                    <td>{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</td>
-                    <td>{formatGrantExpiry(g.expiresAt)}</td>
-                    <td>
+                    </span></td>
+                    <td data-label="宣教士代號"><span className="table-value"><code>{g.missionaryCode}</code></span></td>
+                    <td data-label="會友代號"><span className="table-value"><code>{g.memberCode}</code></span></td>
+                    <td data-label="核准申請參照"><span className="table-value">{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</span></td>
+                    <td data-label="有效期限"><span className="table-value table-nowrap">{formatGrantExpiry(g.expiresAt)}</span></td>
+                    <td data-label="狀態"><span className="table-value">
                       {g.revokedAt
                         ? "已撤銷"
                         : new Date(g.expiresAt) > new Date()
                           ? "有效"
                           : "已到期"}
-                    </td>
-                    <td>
+                    </span></td>
+                    <td data-label="操作"><div className="table-value">
                       <button
                         className="danger"
                         aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限`}
@@ -613,7 +613,7 @@ export function AdminAccess({
                       >
                         撤銷權限
                       </button>
-                    </td>
+                    </div></td>
                   </tr>
                 ))}
               </tbody>
