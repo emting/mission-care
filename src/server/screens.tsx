@@ -31,7 +31,7 @@ import {
 } from "../ui/member";
 import * as s from "./db/schema";
 
-function unavailable(id: string) {
+function unavailable(id: string, member = false) {
   return (
     <section className="panel error-state" role="alert">
       <span aria-hidden="true">⚠</span>
@@ -39,7 +39,7 @@ function unavailable(id: string) {
       <p>
         未顯示的資料不代表沒有待辦。請稍後重新整理，或提供以下識別碼給支援同工。
       </p>
-      <small>request_id：{id}</small>
+      <small>{member ? `參考編號：${id.slice(0,8)}` : `request_id：${id}`}</small>
       <p>
         <Link href="/app">返回關懷平台</Link> ·{" "}
         <Link href="/admin">返回管理總覽</Link>
@@ -116,7 +116,7 @@ export async function MemberScreen({ parts = [] }: { parts?: string[] }) {
     }
     if (error instanceof z.ZodError) return notFound();
     if (error instanceof Error && "digest" in error) throw error;
-    return <MemberShell>{unavailable(requestId)}</MemberShell>;
+    return <MemberShell>{unavailable(requestId,true)}</MemberShell>;
   }
 }
 export async function AdminScreen({
