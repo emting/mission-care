@@ -1,0 +1,1 @@
+export default function Home() { return <main className="mx-auto max-w-2xl p-12"><h1 className="text-3xl font-semibold">Mission Care</h1><p className="mt-4">宣教關懷與代禱平台</p><p className="mt-8">開發測試階段・尚未開放服務。所有測試資料均為虛構。</p></main>; }
