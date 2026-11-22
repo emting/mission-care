@@ -70,5 +70,5 @@ it('grant revocation rows identify the missionary, pseudonymous member and optio
   expect(html).toContain('U-ABCDEF123456');
   expect(html).toContain('title="fictional-request"');
   expect(html).toContain('無申請參照');
-  expect(html).toContain('aria-label="撤銷 U-ABCDEF123456 對 M-EXAMPLE 的觀看授權"');
+  expect(html).toContain('aria-label="撤銷 U-ABCDEF123456 對 M-EXAMPLE 的閱讀權限"');
 });

@@ -229,7 +229,7 @@ export function MemberMissionary({ value: initial }: { value: Missionary }) {
         <label className="toggle-row">
           <span>
             <strong>關注近況</strong>
-            <small>追蹤這位夥伴的關懷更新，不等於開啟推播。</small>
+            <small>關注後可在這裡查看近況，不會傳送 LINE 訊息。</small>
           </span>
           <input
             type="checkbox"
@@ -266,7 +266,7 @@ export function MemberMissionary({ value: initial }: { value: Missionary }) {
             )
           }
         >
-          申請或更新觀看授權 →
+          申請或更新閱讀權限 →
         </button>
         <Feedback member value={action.feedback} />
       </section>
@@ -416,7 +416,7 @@ export function MemberPrivacy({ authenticated }: { authenticated: boolean }) {
         <h2>我們如何使用資料</h2>
         <p>
           LINE
-          身分用於登入驗證與獨立選擇的通知。代禱記錄只用於每日去重與經隱私抑制的匿名統計，不公開誰為誰代禱，也不建立排名。
+          身分用於登入，以及你自行選擇接收的提醒。代禱每天只記一次，只顯示大約人數，不公開是誰，也不建立排名。人數太少時不顯示，保護每個人的隱私。
         </p>
         <h2>安全的關懷界線</h2>
         <p>

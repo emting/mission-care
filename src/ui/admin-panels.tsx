@@ -583,12 +583,12 @@ export function AdminAccess({
                     <td>
                       <button
                         className="danger"
-                        aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的觀看授權`}
+                        aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限`}
                         disabled={action.pending || !!g.revokedAt}
                         onClick={() => {
                           if (
                             window.confirm(
-                              `確認撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的觀看授權？撤銷後會立即阻斷存取，並取消候發通知。`,
+                              `確認撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限？撤銷後會立即阻斷存取，並取消候發通知。`,
                             )
                           )
                             action.run(
@@ -969,7 +969,7 @@ export function AdminSecurity({
                   <option value="pauseNotifications">暫停全部對外通知</option>
                   <option value="disableAi">停用 AI 匯入</option>
                   <option value="letterId">封鎖指定代禱信</option>
-                  <option value="grantId">撤銷指定觀看授權</option>
+                  <option value="grantId">撤銷指定閱讀權限</option>
                   <option value="adminId">撤銷指定管理者登入</option>
                 </select>
               </label>
