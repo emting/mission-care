@@ -3,7 +3,7 @@ import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import * as s from '../db/schema';
 import { WorkflowCore } from './core';
 import { ApiError,fail } from '../services';
-import type { Permission } from '../policy';
+import {staffCan,type Permission} from '../policy';
 import { hash } from '../security';
 import { notificationRecipientEligible } from './delivery';
 export type ReadKind='tasks'|'missionaries'|'letters'|'access-requests'|'audit'|'notification-jobs'|'incidents';
@@ -45,8 +45,10 @@ export class AdminReads {
       [{total}]=await c.db.select({total:count()}).from(s.securityIncidents).where(where);
     } else {
       const where=missionaryFilter(s.auditEvents.missionaryId);
+      const assignments=await c.db.select().from(s.staffAssignments).where(eq(s.staffAssignments.adminId,scope.admin.id));
+      const canLink=(permission:Permission,missionaryId:string|null)=>!!missionaryId && staffCan(scope.admin.id,assignments,permission,missionaryId,c.now());
       const events=await c.db.select({id:s.auditEvents.id,action:s.auditEvents.action,outcome:s.auditEvents.outcome,missionaryId:s.auditEvents.missionaryId,resourceId:s.auditEvents.resourceId,reasonCode:s.auditEvents.reasonCode,requestId:s.auditEvents.requestId,createdAt:s.auditEvents.createdAt,staffEmail:s.admins.email,memberId:s.users.id,actorType:s.auditEvents.actorType,missionaryCode:s.missionaries.code,letterId:s.letters.id}).from(s.auditEvents).leftJoin(s.admins,eq(s.admins.id,s.auditEvents.actorId)).leftJoin(s.users,eq(s.users.id,s.auditEvents.actorId)).leftJoin(s.missionaries,eq(s.missionaries.id,s.auditEvents.missionaryId)).leftJoin(s.letters,eq(s.letters.id,s.auditEvents.resourceId)).where(where).orderBy(desc(s.auditEvents.createdAt),s.auditEvents.id).limit(limit).offset(offset);
-      items=events.map(({staffEmail,memberId,actorType,missionaryCode,letterId,...event})=>({...event,actorLabel:staffEmail??(memberId?`U-${hash(memberId).slice(0,12).toUpperCase()}`:actorType==='request'?'未登入／無法辨識':'系統'),targetLabel:letterId?`${missionaryCode??'代禱信'} · L-${letterId.slice(0,8)}`:missionaryCode??(event.resourceId?'指定資料':'全域／系統'),targetHref:letterId?`/admin/letters/${letterId}`:event.missionaryId?`/admin/missionaries/${event.missionaryId}`:null}));
+      items=events.map(({staffEmail,memberId,actorType,missionaryCode,letterId,...event})=>({...event,actorLabel:staffEmail??(memberId?`U-${hash(memberId).slice(0,12).toUpperCase()}`:actorType==='request'?'未登入／無法辨識':'系統'),targetLabel:letterId?`${missionaryCode??'代禱信'} · L-${letterId.slice(0,8)}`:missionaryCode??(event.resourceId?'指定資料':'全域／系統'),targetHref:letterId?(canLink('letter_read',event.missionaryId)?`/admin/letters/${letterId}`:null):canLink('missionary_read',event.missionaryId)?`/admin/missionaries/${event.missionaryId}`:null}));
       [{total}]=await c.db.select({total:count()}).from(s.auditEvents).where(where);
     }
     await c.audit(c.db,{actorId:scope.admin.id,action:'admin.read.'+kind,requestId});
