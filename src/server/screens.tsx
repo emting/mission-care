@@ -240,6 +240,7 @@ export async function AdminScreen({
             requestId,
           )}
           canLockdown={identity.permissions.includes("lockdown")}
+          canResume={identity.permissions.includes("notification_resume")}
         />
       );
     else if (kind === "settings")

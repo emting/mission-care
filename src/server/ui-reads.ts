@@ -36,7 +36,7 @@ export class UiReads {
       })),
       permissions: [
         ...new Set(assignments.flatMap((a) => [...permissions[a.role]])),
-      ],
+      ].filter(permission=>permission!=="notification_resume" || staffCan(admin.id,assignments,permission,null,c.now())),
       environment: process.env.NODE_ENV === "production" ? "PROD" : "TEST",
       recentMfa: recentMfa(session.mfaVerifiedAt, c.now()),
     };

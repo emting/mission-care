@@ -915,9 +915,11 @@ export function AdminDonations({
 export function AdminSecurity({
   incidents,
   canLockdown,
+  canResume = false,
 }: {
   incidents: Awaited<ReturnType<AdminReads["list"]>>;
   canLockdown: boolean;
+  canResume?: boolean;
 }) {
   const action = useAction();
   const [target, setTarget] = useState("pauseNotifications"),
@@ -934,7 +936,7 @@ export function AdminSecurity({
       <div className="detail-grid">
         <section className="panel security-controls">
           <h2>◈ 緊急安全控制</h2>
-          {canLockdown && <p><Link href="/admin/settings">前往教會設定恢復全域通知（需近期驗證） →</Link></p>}
+          {canResume && <p><Link href="/admin/settings">前往教會設定恢復全域通知（需近期驗證） →</Link></p>}
           <p className="notice">
             ⚠ 操作立即生效，無法收回已下載或截圖的內容。請確認影響範圍。
           </p>
