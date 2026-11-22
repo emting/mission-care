@@ -2011,7 +2011,7 @@ dd {
 .member-shell .member-footer small {
   font-size: 14px;
 }
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .member-shell {
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
