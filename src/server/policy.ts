@@ -21,7 +21,7 @@ export type Role = keyof typeof permissions;
 export type Permission = typeof permissions[Role][number];
 export type Assignment = { adminId: string; role: Role; missionaryId: string|null; expiresAt: Date; revokedAt: Date|null };
 export function staffCan(adminId: string, assignments: Assignment[], permission: Permission, missionaryId: string|null, now: Date) {
-  return assignments.some(a => a.adminId === adminId && !a.revokedAt && a.expiresAt > now && (a.missionaryId === missionaryId || (a.missionaryId === null && ['church_owner','support','finance_link_manager'].includes(a.role))) && (permissions[a.role] as readonly string[]).includes(permission));
+  return assignments.some(a => a.adminId === adminId && !a.revokedAt && a.expiresAt > now && (a.missionaryId === missionaryId || (a.missionaryId === null && ['church_owner','support','finance_link_manager','security_auditor'].includes(a.role))) && (permissions[a.role] as readonly string[]).includes(permission));
 }
 export function canApprove(actor: string, requester: string) { return actor !== requester; }
 export function hasDualControl(requester: string, approvers: string[], required = 2) { return new Set(approvers.filter(a => canApprove(a,requester))).size >= required; }

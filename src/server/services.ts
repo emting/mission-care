@@ -2,13 +2,13 @@ import { and, eq, gt, isNull } from 'drizzle-orm';
 import { authenticator } from 'otplib';
 import type { Database } from './db';
 import * as s from './db/schema';
-import { hash, randomToken, verifyPassword, decryptSecret } from './security';
+import { hash, randomToken, verifyPassword, decryptSecret, encryptSecret } from './security';
 import { lineSubject, type LineVerifier } from './line';
 import { canViewLetter, canViewMissionary, staffCan, type Permission } from './policy';
 export class ApiError extends Error { constructor(public status: number, public code: string) { super(code); } }
 export const fail = (status: number, code: string): never => { throw new ApiError(status,code); };
 export class Services {
-  constructor(public db: Database, private verifier: LineVerifier, private channel: string, private encryptionKey: string, public now = () => new Date()) {}
+  constructor(public db: Database, private verifier: LineVerifier, private channel: string, private encryptionKey: string, public now = () => new Date(), private subjectKey = process.env.LINE_SUBJECT_ENC_KEY ?? encryptionKey) {}
   async challenge() { const nonce = randomToken(); await this.db.insert(s.loginChallenges).values({ nonceHash:hash(nonce),expiresAt:new Date(+this.now()+300_000) }); return nonce; }
   async loginLine(token: string, nonce: string) {
     const [challenge] = await this.db.update(s.loginChallenges).set({ consumedAt:this.now() }).where(and(eq(s.loginChallenges.nonceHash,hash(nonce)),isNull(s.loginChallenges.consumedAt),gt(s.loginChallenges.expiresAt,this.now()))).returning();
@@ -18,9 +18,12 @@ export class Services {
     const userId = await this.db.transaction(async tx => {
       await tx.execute((await import('drizzle-orm')).sql`select pg_advisory_xact_lock(hashtext(${subHash}))`);
       const [identity] = await tx.select().from(s.lineIdentities).where(and(eq(s.lineIdentities.provider,this.channel),eq(s.lineIdentities.subHash,subHash)));
-      if (identity) return identity.userId;
+      if (identity) {
+        await tx.update(s.lineIdentities).set({encryptedSub:encryptSecret(sub,this.subjectKey)}).where(eq(s.lineIdentities.id,identity.id));
+        return identity.userId;
+      }
       const [user] = await tx.insert(s.users).values({}).returning();
-      await tx.insert(s.lineIdentities).values({ userId:user.id,provider:this.channel,subHash }); return user.id;
+      await tx.insert(s.lineIdentities).values({ userId:user.id,provider:this.channel,subHash,encryptedSub:encryptSecret(sub,this.subjectKey) }); return user.id;
     });
     const [user] = await this.db.select().from(s.users).where(eq(s.users.id,userId));
     if (!user.enabled) return fail(403,'account_disabled');

@@ -4,6 +4,7 @@ import { getDatabase } from './db';
 import { Services, ApiError, fail } from './services';
 import { verifyLine } from './line';
 import { MemoryRateLimiter, type RateLimiter } from './security';
+import { auditEvents } from './db/schema';
 export const memberCookie = '__Host-mc_member';
 export const adminCookie = '__Host-mc_admin';
 export function cookie(req: Request, name: string) { return req.headers.get('cookie')?.split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='))?.slice(name.length+1); }
@@ -17,8 +18,12 @@ const schemas = {
 export type Endpoint = 'challenge'|'line'|'logout'|'password'|'mfa'|'adminLogout'|'overview'|'missionaries'|'letters'|'letter';
 export function createHandler(endpoint: Endpoint, service: () => Services, origin: string, limiter: RateLimiter) {
   return async (req: Request, id?: string) => {
-    const request_id = randomUUID(); const headers = new Headers({'Cache-Control':'no-store','Content-Type':'application/json'});
-    const respond = (data: unknown,status=200) => new Response(JSON.stringify({data,request_id}),{status,headers});
+    const request_id = randomUUID(); const headers = new Headers({'Cache-Control':'no-store','Content-Type':'application/json','X-Request-Id':request_id});
+    const respond = async (data: unknown,status=200) => {
+      try { await service().db.insert(auditEvents).values({actorType:'request',action:'api.'+endpoint,requestId:request_id,outcome:'success'}); }
+      catch { return new Response(JSON.stringify({error:{code:'internal_error'},request_id}),{status:500,headers}); }
+      return new Response(JSON.stringify({data,request_id}),{status,headers});
+    };
     try {
       const mutating = req.method !== 'GET';
       if (mutating) mutationGuard(req,origin);
@@ -40,9 +45,10 @@ export function createHandler(endpoint: Endpoint, service: () => Services, origi
       }
     } catch (error) {
       const status = error instanceof ApiError ? error.status : error instanceof z.ZodError ? 400 : 500;
+      try { await service().db.insert(auditEvents).values({actorType:'request',action:'api.'+endpoint,requestId:request_id,outcome:String(status)}); } catch { /* Do not expose database failures. */ }
       return new Response(JSON.stringify({error:{code:error instanceof ApiError ? error.code : status === 400 ? 'invalid_input' : 'internal_error'},request_id}),{status,headers});
     }
   };
 }
 const limiter = new MemoryRateLimiter();
-export const handler = (endpoint: Endpoint, id?: string) => (req: Request) => createHandler(endpoint,()=>new Services(getDatabase(),verifyLine,process.env.LINE_LOGIN_CHANNEL_ID ?? '',process.env.AUTH_ENCRYPTION_KEY ?? ''),process.env.APP_ORIGIN ?? 'https://localhost:3000',limiter)(req,id);
+export const handler = (endpoint: Endpoint, id?: string) => (req: Request) => createHandler(endpoint,()=>new Services(getDatabase(),verifyLine,process.env.LINE_LOGIN_CHANNEL_ID ?? '',process.env.AUTH_ENCRYPTION_KEY ?? '',()=>new Date(),process.env.LINE_SUBJECT_ENC_KEY??''),process.env.APP_ORIGIN ?? 'https://localhost:3000',limiter)(req,id);

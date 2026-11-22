@@ -77,3 +77,8 @@ it('logout revokes member cookie and safe errors include request IDs',async()=>{
   await svc.logout(member); await expect(svc.member(member)).rejects.toMatchObject({status:401});
   const response=await call('letters',new Request(origin)); const data=await response.json(); expect(response.status).toBe(401); expect(data.request_id).toBeTruthy(); expect(data.error).toEqual({code:'unauthenticated'});
 });
+it('admin §16.14 audit storage failure never leaks a stack or raw database error',async()=>{
+  const broken={async challenge(){return 'fictional-nonce';},db:{insert(){throw new Error('private database stack and secret');}}} as unknown as Services;
+  const route=createHandler('challenge',()=>broken,origin,new MemoryRateLimiter());
+  const response=await route(req({}));expect(response.status).toBe(500);const body=await response.json();expect(body.error).toEqual({code:'internal_error'});expect(body.request_id).toBeTruthy();expect(JSON.stringify(body)).not.toContain('private');
+});
