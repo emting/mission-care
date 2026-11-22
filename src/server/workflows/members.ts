@@ -2,6 +2,7 @@ import { and,eq,gt,isNull,inArray,sql } from 'drizzle-orm';
 import * as s from '../db/schema';
 import { fail,Services } from '../services';
 import { WorkflowCore } from './core';
+import {canRevokeGrant} from '../policy';
 export function taipeiDate(now:Date) { return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(now); }
 export class Members {
   constructor(public core:WorkflowCore,private suppression=5) { if(suppression<2 || !Number.isInteger(suppression)) throw new Error('Invalid suppression threshold'); }
@@ -34,6 +35,11 @@ export class Members {
     return c.operation({actorId:user.id,action:'access.request',requestId},{missionaryId},async db=>{
       const [m]=await db.select().from(s.missionaries).where(and(eq(s.missionaries.id,missionaryId),eq(s.missionaries.active,true)));
       if(m && m.governance!=='offline') {
+        if(m.governance==='invite_only') {
+          const [grant]=await db.select({id:s.accessGrants.id}).from(s.accessGrants).where(and(eq(s.accessGrants.userId,user.id),eq(s.accessGrants.missionaryId,missionaryId)));
+          const [history]=await db.select({id:s.accessRequests.id}).from(s.accessRequests).where(and(eq(s.accessRequests.userId,user.id),eq(s.accessRequests.missionaryId,missionaryId)));
+          if(!grant && !history) return {accepted:true};
+        }
         const [old]=await db.select().from(s.accessRequests).where(and(eq(s.accessRequests.userId,user.id),eq(s.accessRequests.missionaryId,missionaryId),eq(s.accessRequests.status,'pending')));
         if(!old) await db.insert(s.accessRequests).values({userId:user.id,missionaryId});
       }
@@ -57,6 +63,7 @@ export class Members {
     return c.operation({actorId:admin.id,action:'access.revoke',resourceId:id,requestId},{id},async db=>{
       const [g]=await db.select().from(s.accessGrants).where(eq(s.accessGrants.id,id)); if(!g) return fail(404,'not_found');
       await c.staff(db,token,'access_decide',g.missionaryId);
+      if(!canRevokeGrant(g,c.now())) return fail(409,'grant_inactive');
       await db.update(s.accessGrants).set({revokedAt:c.now()}).where(eq(s.accessGrants.id,id)); await c.cancelJobs(db,g.missionaryId,g.userId); return {revoked:true};
     });
   }

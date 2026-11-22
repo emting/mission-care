@@ -10,12 +10,14 @@ import {
   Empty,
   Feedback,
   formatDate,
+  formatGrantExpiry,
   PageHeading,
   useAction,
 } from "./shared";
 import { DataTable } from "./admin";
 import { riskLabels, roleLabels, type AdminIdentity } from "./navigation";
-import { canRetryNotification } from "../server/policy";
+import { canRetryNotification, canRevokeGrant } from "../server/policy";
+import {taipeiCalendarDate} from "../server/taipei-calendar";
 type Review = Awaited<ReturnType<UiReads["adminLetter"]>>;
 export function AdminLetter({ value }: { value: Review }) {
   const action = useAction();
@@ -23,7 +25,9 @@ export function AdminLetter({ value }: { value: Review }) {
     [summary, setSummary] = useState(value.content.safeSummary),
     [points, setPoints] = useState(value.content.prayerPoints.join("\n")),
     [raw, setRaw] = useState(value.content.raw ?? ""),
-    [consent, setConsent] = useState(false);
+    [consent, setConsent] = useState(false),
+    [archiveReason,setArchiveReason] = useState("");
+  const [returnComment,setReturnComment]=useState("");
   const frozen = value.status === "pending_review";
   const editable = value.canEdit && !frozen;
   const dirty =
@@ -42,6 +46,7 @@ export function AdminLetter({ value }: { value: Review }) {
           ...revision(),
           decision: choice,
           consent,
+          ...(choice==='reject'?{comment:returnComment}:{}),
         }),
       "審核決定已記錄",
     );
@@ -63,6 +68,7 @@ export function AdminLetter({ value }: { value: Review }) {
         </div>
       </PageHeading>
       <Feedback value={action.feedback} />
+      {value.latestReturnNote && <aside className="notice"><strong>最近一次退修意見</strong><p style={{whiteSpace:'pre-wrap'}}>{value.latestReturnNote}</p></aside>}
       <div className="review-layout">
         <section className="panel editor-panel">
           <div className="panel-heading">
@@ -329,9 +335,10 @@ export function AdminLetter({ value }: { value: Review }) {
                 </p>
               ) : null}
               <div className="button-row">
+                <label>退修意見（必填）<textarea required maxLength={2000} value={returnComment} onChange={e=>setReturnComment(e.target.value)} disabled={reviewDisabled} /></label>
                 <button
                   className="secondary"
-                  disabled={reviewDisabled}
+                  disabled={reviewDisabled || !returnComment.trim()}
                   onClick={() => decision("reject")}
                 >
                   退修
@@ -364,9 +371,13 @@ export function AdminLetter({ value }: { value: Review }) {
             </button>
           )}
           {value.canArchive && (
+            <><label>撤稿原因<select required value={archiveReason} onChange={e=>setArchiveReason(e.target.value)}>
+              <option value="" disabled>請選擇處置原因</option>
+              <option value="suspected_disclosure">疑似資訊外洩</option><option value="access_violation">存取權限異常</option><option value="delivery_failure">通知發送異常</option><option value="emergency_lockdown">緊急安全封鎖</option><option value="other">其他安全原因</option>
+            </select></label>
             <button
               className="danger"
-              disabled={action.pending || value.status === "archived"}
+              disabled={action.pending || value.status === "archived" || !archiveReason}
               onClick={() => {
                 if (
                   window.confirm(
@@ -374,13 +385,13 @@ export function AdminLetter({ value }: { value: Review }) {
                   )
                 )
                   action.run(
-                    () => api(`admin/letters/${value.id}/archive`, revision()),
+                    () => api(`admin/letters/${value.id}/archive`, {...revision(),reasonCode:archiveReason}),
                     "已撤稿，候發通知已取消",
                   );
               }}
             >
               撤稿並取消候發通知
-            </button>
+            </button></>
           )}
           {!value.canReview && !value.canPublish && !value.canArchive && (
             <p className="muted">目前角色只能編輯與送審，不能核准或發布。</p>
@@ -449,15 +460,18 @@ export function AdminAccess({
   requests,
   grants,
   offset,
+  now=new Date().toISOString(),
 }: {
   requests: Awaited<ReturnType<AdminReads["list"]>>;
   grants: Awaited<ReturnType<UiReads["grants"]>>;
   offset: number;
+  now?:string;
 }) {
   const action = useAction();
   const [expiry, setExpiry] = useState(
-    new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    ()=>taipeiCalendarDate(new Date(now),30),
   );
+  const [minExpiry]=useState(()=>taipeiCalendarDate(new Date(now),1));
   return (
     <>
       <PageHeading
@@ -475,7 +489,7 @@ export function AdminAccess({
               type="date"
               value={expiry}
               required
-              min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+              min={minExpiry}
               onChange={(e) => setExpiry(e.target.value)}
             />
           </label>
@@ -499,9 +513,7 @@ export function AdminAccess({
                           api(`admin/access-requests/${row.id}/decision`, {
                             request_id: crypto.randomUUID(),
                             approve: true,
-                            expiresAt: new Date(
-                              expiry + "T00:00:00+08:00",
-                            ).toISOString(),
+                            expiresOn: expiry,
                           }),
                         "已核准指定觀看權限",
                       );
@@ -518,7 +530,6 @@ export function AdminAccess({
                         api(`admin/access-requests/${row.id}/decision`, {
                           request_id: crypto.randomUUID(),
                           approve: false,
-                          expiresAt: new Date().toISOString(),
                         }),
                       "已拒絕申請",
                     )
@@ -572,7 +583,7 @@ export function AdminAccess({
                     <td><code>{g.missionaryCode}</code></td>
                     <td><code>{g.memberCode}</code></td>
                     <td>{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</td>
-                    <td>{formatDate(g.expiresAt)}</td>
+                    <td>{formatGrantExpiry(g.expiresAt)}</td>
                     <td>
                       {g.revokedAt
                         ? "已撤銷"
@@ -584,7 +595,7 @@ export function AdminAccess({
                       <button
                         className="danger"
                         aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限`}
-                        disabled={action.pending || !!g.revokedAt}
+                        disabled={action.pending || !canRevokeGrant(g,new Date())}
                         onClick={() => {
                           if (
                             window.confirm(

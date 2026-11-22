@@ -5,6 +5,7 @@ import * as s from '../db/schema';
 import * as w from '../db/workflow-schema';
 import { Services, ApiError, fail } from '../services';
 import { hash, encryptSecret, decryptSecret } from '../security';
+import {securityReasonInput} from '../security-reason';
 import { recentMfa, staffCan, canViewLetter,canViewMissionary,type Permission } from '../policy';
 export const revisionInput = z.object({request_id:z.uuid(),expected_revision:z.number().int().positive()}).strict();
 export const contentInput = z.object({
@@ -13,7 +14,7 @@ export const contentInput = z.object({
   visibility:z.enum(['public','restricted']).default('restricted'),assetIds:z.array(z.uuid()).max(10).default([]),
 }).strict();
 export type Content = z.infer<typeof contentInput>;
-export type Context = {actorId:string;requestId:string;action:string;missionaryId?:string|null;resourceId?:string};
+export type Context = {actorId:string;requestId:string;action:string;missionaryId?:string|null;resourceId?:string;reasonCode?:string};
 export class WorkflowCore {
   constructor(public auth: Services, public key: string) {}
   get db() { return this.auth.db; }
@@ -22,14 +23,18 @@ export class WorkflowCore {
   unseal(content: string) { return contentInput.parse(JSON.parse(decryptSecret(content,this.key))); }
   async audit(db: Database, c: Context, outcome = 'success') {
     if(!c.missionaryId && c.resourceId) {
-      const [letter]=await db.select({id:s.letters.missionaryId}).from(s.letters).where(eq(s.letters.id,c.resourceId));
+      const [task]=await db.select({letterId:s.reviewTasks.letterId}).from(s.reviewTasks).where(eq(s.reviewTasks.id,c.resourceId));
+      const [job]=await db.select({letterId:s.deliveryJobs.letterId}).from(s.deliveryJobs).where(eq(s.deliveryJobs.id,c.resourceId));
+      const [letter]=await db.select({id:s.letters.missionaryId,letterId:s.letters.id}).from(s.letters).where(eq(s.letters.id,task?.letterId??job?.letterId??c.resourceId));
       const [grant]=await db.select({id:s.accessGrants.missionaryId}).from(s.accessGrants).where(eq(s.accessGrants.id,c.resourceId));
       const [request]=await db.select({id:s.accessRequests.missionaryId}).from(s.accessRequests).where(eq(s.accessRequests.id,c.resourceId));
-      c={...c,missionaryId:letter?.id??grant?.id??request?.id};
+      c={...c,resourceId:letter?.letterId??c.resourceId,missionaryId:letter?.id??grant?.id??request?.id};
     }
-    await db.insert(s.auditEvents).values({actorId:c.actorId,actorType:'internal',action:c.action,requestId:c.requestId,missionaryId:c.missionaryId,resourceId:c.resourceId,outcome});
+    await db.insert(s.auditEvents).values({actorId:c.actorId,actorType:'internal',action:c.action,requestId:c.requestId,missionaryId:c.missionaryId,resourceId:c.resourceId,reasonCode:c.reasonCode,outcome});
   }
   async operation<T>(c: Context, input: unknown, work: (db: Database)=>Promise<T>): Promise<T> {
+    const reason=securityReasonInput.safeParse((input as {reasonCode?:unknown})?.reasonCode);
+    if(reason.success) c={...c,reasonCode:reason.data};
     return this.db.transaction(async tx => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext('mc_dispatch_governance'))`);
       const inputHash=hash(JSON.stringify({resourceId:c.resourceId,input}));

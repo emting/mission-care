@@ -55,6 +55,7 @@ it('PRD §12.16 privacy request is trackable and disables account/consent/grants
 });
 it('access request cannot enumerate resources, is rate-limited, and approvals are scoped/expiring',async()=>{
   const member=randomUUID();const [u]=await f.db.insert(s.users).values({}).returning();const {hash}=await import('../src/server/security');await f.db.insert(s.sessions).values({userId:u.id,tokenHash:hash(member),expiresAt:new Date(+f.clock.now+86400000)});
+  await f.db.insert(s.accessGrants).values({userId:u.id,missionaryId:f.b.id,revokedAt:f.clock.now,expiresAt:f.clock.now});
   const requestId=randomUUID();expect(await f.members.requestAccess(member,f.b.id,requestId)).toEqual({accepted:true});expect(await f.members.requestAccess(member,randomUUID(),randomUUID())).toEqual({accepted:true});
   const [request]=await f.db.select().from(s.accessRequests).where(eq(s.accessRequests.userId,u.id));
   await expect(f.members.decideAccess(f.lead.token,request.id,true,new Date(+f.clock.now+1000),randomUUID())).rejects.toMatchObject({status:404});

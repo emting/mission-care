@@ -20,7 +20,7 @@ it('SSR and browser timestamps use fixed zero-padded Taipei text without locale 
 it('an author without review permission sees a disabled approve control and self-approval explanation',()=>{
   const value:Parameters<typeof AdminLetter>[0]['value']={
     id:'fictional-letter',missionaryId:'fictional-missionary',revision:1,status:'pending_review',consent:false,
-    content,suggestion:null,riskFlags:[],self:true,reviewed:false,taskId:null,
+    content,suggestion:null,riskFlags:[],self:true,reviewed:false,taskId:null,latestReturnNote:null,
     canEdit:true,canSubmit:true,canReview:false,canPublish:false,canArchive:false,reviews:[],
   };
   const html=renderToStaticMarkup(createElement(AdminLetter,{value}));

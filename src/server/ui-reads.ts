@@ -10,6 +10,7 @@ import { aiOutput } from "./ai";
 import { scanSensitive } from "./ai";
 import type { AdminIdentity } from "../ui/navigation";
 import { notificationRecipientEligible } from "./workflows/delivery";
+export type MemberCard={id:string;code:string;region:string;overview:string|null;locked?:boolean;accessStatus?:string;canRequest?:boolean};
 
 export class UiReads {
   constructor(public core: WorkflowCore) {}
@@ -41,21 +42,28 @@ export class UiReads {
       recentMfa: recentMfa(session.mfaVerifiedAt, c.now()),
     };
   }
-  async memberList(token: string | undefined) {
+  async memberList(token: string | undefined):Promise<MemberCard[]> {
+    const c=this.core;
+    const user=await c.auth.member(token);
     const visible = await this.core.auth.visibleMissionaries(token);
-    const rows = await this.core.db
-      .select({ id: s.missionaries.id, region: s.missionaries.generalRegion })
-      .from(s.missionaries);
-    return visible.map((m) => ({
-      ...m,
-      region: rows.find((r) => r.id === m.id)?.region ?? "未提供區域",
-    }));
+    const rows=await c.db.select().from(s.missionaries);
+    const grants=await c.db.select().from(s.accessGrants).where(eq(s.accessGrants.userId,user.id));
+    const requests=await c.db.select().from(s.accessRequests).where(eq(s.accessRequests.userId,user.id)).orderBy(desc(s.accessRequests.createdAt),desc(s.accessRequests.id));
+    return rows.flatMap(m=>{
+      const safe=visible.find(v=>v.id===m.id);
+      if(safe) return [{...safe,region:m.generalRegion??'未提供區域'}];
+      const grant=grants.find(g=>g.missionaryId===m.id),request=requests.find(r=>r.missionaryId===m.id);
+      if(!grant && !request) return [];
+      const available=m.active && m.governance!=='offline';
+      const accessStatus=!available?'目前暫不提供閱讀':request?.status==='pending'?'審核中':grant?.revokedAt?'已撤銷':grant && grant.expiresAt<=c.now()?'已到期':request?.status==='rejected'?'未通過':'需要閱讀權限';
+      return [{id:m.id,code:m.code,region:m.generalRegion??'未提供區域',overview:null,locked:true,accessStatus,canRequest:available && request?.status!=='pending'}];
+    });
   }
   async memberMissionary(token: string | undefined, id: string) {
     const c = this.core;
     const user = await c.auth.member(token);
     const missionary = (await this.memberList(token)).find((m) => m.id === id);
-    if (!missionary) return fail(404, "not_found");
+    if (!missionary || missionary.locked) return fail(404, "not_found");
     const [sub] = await c.db
       .select()
       .from(s.subscriptions)
@@ -72,6 +80,15 @@ export class UiReads {
       letters: (await c.auth.visibleLetters(token)).filter(
         (l) => l.missionaryId === id,
       ),
+    };
+  }
+  async memberAccess(token:string|undefined) {
+    const c=this.core,user=await c.auth.member(token);
+    const requests=await c.db.select({id:s.accessRequests.id,missionaryCode:s.missionaries.code,status:s.accessRequests.status}).from(s.accessRequests).innerJoin(s.missionaries,eq(s.missionaries.id,s.accessRequests.missionaryId)).where(eq(s.accessRequests.userId,user.id)).orderBy(desc(s.accessRequests.createdAt),desc(s.accessRequests.id));
+    const grants=await c.db.select({id:s.accessGrants.id,missionaryCode:s.missionaries.code,expiresAt:s.accessGrants.expiresAt,revokedAt:s.accessGrants.revokedAt}).from(s.accessGrants).innerJoin(s.missionaries,eq(s.missionaries.id,s.accessGrants.missionaryId)).where(eq(s.accessGrants.userId,user.id)).orderBy(s.missionaries.code);
+    return {
+      requests:requests.map(r=>({...r,status:r.status==='pending'?'審核中':r.status==='approved'?'已核准':r.status==='rejected'?'未通過':'狀態待確認'})),
+      grants:grants.map(({revokedAt,...g})=>({...g,status:revokedAt?'已撤銷':g.expiresAt<=c.now()?'已到期':'已核准'})),
     };
   }
   async memberLetter(token: string | undefined, id: string) {
@@ -191,8 +208,10 @@ export class UiReads {
     const suggestion = draft?.encryptedAiDraft
       ? aiOutput.parse(JSON.parse(decryptSecret(draft.encryptedAiDraft, c.key)))
       : null;
+    const [returned]=await c.db.select({note:s.letterReviews.returnCommentEncrypted}).from(s.letterReviews).where(and(eq(s.letterReviews.letterId,id),eq(s.letterReviews.decision,'reject'))).orderBy(desc(s.letterReviews.createdAt),desc(s.letterReviews.id)).limit(1);
     return {
       id,
+      latestReturnNote: returned?.note && (can('draft_edit') || can('review')) ? decryptSecret(returned.note,c.key) : null,
       missionaryId: letter.missionaryId,
       revision: letter.revision,
       status: letter.status,

@@ -31,7 +31,7 @@ it("member UI projections show only visible code names, safe content and the cur
   expect(letter).not.toHaveProperty("userId");
   await f.members.pray(f.member, l.id, randomUUID());
   expect((await ui.memberLetter(f.member, l.id)).prayed).toBe(true);
-  await f.editorial.archive(f.lead.token, l.id, l.revision, randomUUID());
+  await f.editorial.archive(f.lead.token, l.id, l.revision, randomUUID(), 'other');
   await expect(ui.memberLetter(f.member, l.id)).rejects.toMatchObject({
     status: 404,
   });

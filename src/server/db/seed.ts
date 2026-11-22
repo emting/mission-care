@@ -276,6 +276,7 @@ export async function seedLocal() {
                   letter.id,
                   revision,
                   randomUUID(),
+                  "other",
                 );
             }
           }

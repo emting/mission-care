@@ -14,6 +14,7 @@ import { AdminReads,type ReadKind } from './workflows/reads';
 import { Media } from './workflows/media';
 import { LocalPrivateStorage } from './storage';
 import { auditEvents } from './db/schema';
+import {exclusiveTaipeiExpiry} from './taipei-calendar';
 const revision={request_id:z.uuid(),expected_revision:z.number().int().positive()};
 const requestId={request_id:z.uuid().default(()=>randomUUID())};
 const code=securityReasonInput;
@@ -83,18 +84,21 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
         if(parts[3]==='assets' && method==='POST') {const b=z.object({...revision,base64:z.string().max(7*1024*1024)}).strict().parse(body); return respond(await media.upload(admin,id,b.expected_revision,Buffer.from(b.base64,'base64'),b.request_id));}
         if(parts[3]==='public-change-request' && method==='POST') {const b=z.object({...revision,consent:z.literal(true)}).strict().parse(body); return respond(await g.propose(admin,'letter.public',id,b.expected_revision,{consent:b.consent},b.request_id));}
         if(method==='POST') {
+          if(parts[3]==='archive') {const b=z.object({...revision,reasonCode:code}).strict().parse(body); return respond(await e.archive(admin,id,b.expected_revision,b.request_id,b.reasonCode));}
           const b=z.object(revision).strict().parse(body);
           if(parts[3]==='submit-review') return respond(await e.submit(admin,id,b.expected_revision,b.request_id));
           if(parts[3]==='publish') return respond(await e.publish(admin,id,b.expected_revision,b.request_id));
-          if(parts[3]==='archive') return respond(await e.archive(admin,id,b.expected_revision,b.request_id));
           if(parts[3]==='ai-draft') return respond(await e.aiDraft(admin,undefined,id,b.expected_revision,b.request_id));
         }
       }
       if(parts[1]==='reviews' && parts[3]==='decision' && method==='POST') {
-        const b=z.object({...revision,decision:z.enum(['approve','reject']),consent:z.boolean()}).strict().parse(body); return respond(await e.decide(admin,z.uuid().parse(parts[2]),b.expected_revision,b.decision,b.consent,b.request_id));
+        const b=z.object({...revision,decision:z.enum(['approve','reject']),consent:z.boolean(),comment:z.string().max(2000).optional()}).strict().parse(body); return respond(await e.decide(admin,z.uuid().parse(parts[2]),b.expected_revision,b.decision,b.consent,b.request_id,b.comment));
       }
       if(parts[1]==='access-requests' && parts[3]==='decision' && method==='POST') {
-        const b=z.object({...requestId,approve:z.boolean(),expiresAt:z.iso.datetime()}).strict().parse(body); return respond(await m.decideAccess(admin,z.uuid().parse(parts[2]),b.approve,new Date(b.expiresAt),b.request_id));
+        const b=z.object({...requestId,approve:z.boolean(),expiresOn:z.string().optional(),expiresAt:z.iso.datetime().optional()}).strict().refine(b=>!b.approve || !!(b.expiresOn || b.expiresAt)).refine(b=>!(b.expiresOn && b.expiresAt)).parse(body);
+        const expiry=b.expiresOn!==undefined?exclusiveTaipeiExpiry(b.expiresOn):new Date(b.expiresAt??0);
+        if(!expiry) return fail(400,'invalid_expiry');
+        return respond(await m.decideAccess(admin,z.uuid().parse(parts[2]),b.approve,expiry,b.request_id));
       }
       if(parts[1]==='access-grants' && parts[3]==='revoke' && method==='POST') {const b=z.object(requestId).strict().parse(body); return respond(await m.revoke(admin,z.uuid().parse(parts[2]),b.request_id));}
       if(parts[1]==='notification-jobs' && parts[3]==='retry' && method==='POST') {const b=z.object(requestId).strict().parse(body); return respond(await delivery.retry(admin,z.uuid().parse(parts[2]),b.request_id));}
