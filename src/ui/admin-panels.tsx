@@ -23,7 +23,8 @@ export function AdminLetter({ value }: { value: Review }) {
     [summary, setSummary] = useState(value.content.safeSummary),
     [points, setPoints] = useState(value.content.prayerPoints.join("\n")),
     [raw, setRaw] = useState(value.content.raw ?? ""),
-    [consent, setConsent] = useState(false);
+    [consent, setConsent] = useState(false),
+    [archiveReason,setArchiveReason] = useState("");
   const frozen = value.status === "pending_review";
   const editable = value.canEdit && !frozen;
   const dirty =
@@ -364,9 +365,13 @@ export function AdminLetter({ value }: { value: Review }) {
             </button>
           )}
           {value.canArchive && (
+            <><label>撤稿原因<select required value={archiveReason} onChange={e=>setArchiveReason(e.target.value)}>
+              <option value="" disabled>請選擇處置原因</option>
+              <option value="suspected_disclosure">疑似資訊外洩</option><option value="access_violation">存取權限異常</option><option value="delivery_failure">通知發送異常</option><option value="emergency_lockdown">緊急安全封鎖</option><option value="other">其他安全原因</option>
+            </select></label>
             <button
               className="danger"
-              disabled={action.pending || value.status === "archived"}
+              disabled={action.pending || value.status === "archived" || !archiveReason}
               onClick={() => {
                 if (
                   window.confirm(
@@ -374,13 +379,13 @@ export function AdminLetter({ value }: { value: Review }) {
                   )
                 )
                   action.run(
-                    () => api(`admin/letters/${value.id}/archive`, revision()),
+                    () => api(`admin/letters/${value.id}/archive`, {...revision(),reasonCode:archiveReason}),
                     "已撤稿，候發通知已取消",
                   );
               }}
             >
               撤稿並取消候發通知
-            </button>
+            </button></>
           )}
           {!value.canReview && !value.canPublish && !value.canArchive && (
             <p className="muted">目前角色只能編輯與送審，不能核准或發布。</p>

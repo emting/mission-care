@@ -83,10 +83,10 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
         if(parts[3]==='assets' && method==='POST') {const b=z.object({...revision,base64:z.string().max(7*1024*1024)}).strict().parse(body); return respond(await media.upload(admin,id,b.expected_revision,Buffer.from(b.base64,'base64'),b.request_id));}
         if(parts[3]==='public-change-request' && method==='POST') {const b=z.object({...revision,consent:z.literal(true)}).strict().parse(body); return respond(await g.propose(admin,'letter.public',id,b.expected_revision,{consent:b.consent},b.request_id));}
         if(method==='POST') {
+          if(parts[3]==='archive') {const b=z.object({...revision,reasonCode:code}).strict().parse(body); return respond(await e.archive(admin,id,b.expected_revision,b.request_id,b.reasonCode));}
           const b=z.object(revision).strict().parse(body);
           if(parts[3]==='submit-review') return respond(await e.submit(admin,id,b.expected_revision,b.request_id));
           if(parts[3]==='publish') return respond(await e.publish(admin,id,b.expected_revision,b.request_id));
-          if(parts[3]==='archive') return respond(await e.archive(admin,id,b.expected_revision,b.request_id));
           if(parts[3]==='ai-draft') return respond(await e.aiDraft(admin,undefined,id,b.expected_revision,b.request_id));
         }
       }

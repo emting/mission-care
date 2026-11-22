@@ -455,6 +455,8 @@ const columns: Record<string, { key: string; label: string }[]> = {
   ],
   audit: [
     { key: "actorLabel", label: "操作者" },
+    { key: "targetLabel", label: "操作對象" },
+    { key: "reasonCode", label: "原因" },
     { key: "action", label: "操作紀錄" },
     { key: "outcome", label: "結果" },
     { key: "requestId", label: "request_id" },
@@ -523,7 +525,7 @@ export function DataTable({
           {(items as Row[]).map((row, i) => (
             <tr key={String(row.id ?? i)}>
               {columns[kind].map((c) => (
-                <td key={c.key}>{cell(c.key, row[c.key])}</td>
+                <td key={c.key}>{c.key==="targetLabel" && typeof row.targetHref==="string" ? <Link href={row.targetHref}>{cell(c.key,row[c.key])}</Link> : cell(c.key, row[c.key])}</td>
               ))}
               {actions && <td>{actions(row)}</td>}
             </tr>

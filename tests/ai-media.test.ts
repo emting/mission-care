@@ -37,7 +37,7 @@ it('PRD §12.3/4 and admin §16.9 media rechecks A/B grant and archive; no perma
   const response=await f.route(f.request('media/'+upload.id)); expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('no-store'); expect(response.headers.get('content-type')).toBe('image/webp');
   await f.db.update(s.accessGrants).set({expiresAt:new Date(0)}).where(eq(s.accessGrants.id,f.grant.id)); expect((await f.route(f.request('media/'+upload.id))).status).toBe(404);
   await f.db.update(s.accessGrants).set({expiresAt:new Date(+f.clock.now+86400000)}).where(eq(s.accessGrants.id,f.grant.id));
-  await f.editorial.archive(f.lead.token,l.id,2,randomUUID()); expect((await f.route(f.request('media/'+upload.id))).status).toBe(404);
+  await f.editorial.archive(f.lead.token,l.id,2,randomUUID(),'other'); expect((await f.route(f.request('media/'+upload.id))).status).toBe(404);
   const other=await f.staff(['editor'],f.b.id);const hidden=await f.editorial.create(other.token,undefined,f.b.id,content,randomUUID());const otherAsset=await f.media.upload(other.token,hidden.id,1,image,randomUUID());
   expect((await f.route(f.request('media/'+otherAsset.id))).status).toBe(404);
 });

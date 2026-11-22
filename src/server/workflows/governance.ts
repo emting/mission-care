@@ -6,7 +6,8 @@ import { WorkflowCore } from './core';
 import { ApiError, fail } from '../services';
 import { hash } from '../security';
 import { z } from 'zod';
-export const securityReasonInput=z.enum(['suspected_disclosure','access_violation','delivery_failure','emergency_lockdown','other']);
+import {securityReasonInput} from '../security-reason';
+export {securityReasonInput} from '../security-reason';
 export function officialUrl(value:string,domains:string[]) {
   let u:URL; try { u=new URL(value); } catch { return fail(400,'invalid_official_url'); }
   if(u.protocol!=='https:' || u.username || u.password || u.port || !domains.includes(u.hostname) || u.hash) return fail(400,'invalid_official_url'); return u;

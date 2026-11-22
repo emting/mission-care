@@ -7,6 +7,7 @@ import { hash,encryptSecret } from '../security';
 import { draftSafely,localAi,type AiProvider } from '../ai';
 import { staffCan } from '../policy';
 import { WorkflowCore,type Content } from './core';
+import {securityReasonInput} from '../security-reason';
 export class Editorial {
   constructor(public core:WorkflowCore,private ai:AiProvider=localAi) {}
   async create(token:string|undefined,memberToken:string|undefined,missionaryId:string,content:Content,requestId:string) {
@@ -124,10 +125,11 @@ export class Editorial {
       return {id,revision:l.revision};
     });
   }
-  async archive(token:string|undefined,id:string,expected:number,requestId:string) {
+  async archive(token:string|undefined,id:string,expected:number,requestId:string,reasonCode:string) {
     const c=this.core; const {admin}=await c.auth.adminSession(token);
-    return c.operation({actorId:admin.id,action:'letter.archive',resourceId:id,requestId},{id,expected},async db=>{
+    return c.operation({actorId:admin.id,action:'letter.archive',resourceId:id,requestId},{id,expected,reasonCode},async db=>{
       const l=await c.letter(db,id); await c.staff(db,token,'archive',l.missionaryId); c.conflict(l.revision,expected);
+      if(!securityReasonInput.safeParse(reasonCode).success) return fail(400,'invalid_input');
       await db.update(s.letters).set({status:'archived',archivedAt:c.now()}).where(eq(s.letters.id,id));
       await db.update(s.deliveryJobs).set({status:'cancelled'}).where(and(eq(s.deliveryJobs.letterId,id),inArray(s.deliveryJobs.status,['pending','failed']))); return {id};
     });

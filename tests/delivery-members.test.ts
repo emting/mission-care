@@ -47,7 +47,7 @@ it('PRD §12.4 and admin §16.9 撤權／撤稿即時阻斷 API 與 queued jobs'
   await subscribe();const l=await f.published();await f.members.revoke(f.lead.token,f.grant.id,randomUUID());
   await expect(f.auth.letter(f.member,l.id)).rejects.toMatchObject({status:404});const jobs=await f.db.select().from(s.deliveryJobs).where(eq(s.deliveryJobs.letterId,l.id));expect(jobs[0].status).toBe('cancelled');
   await f.db.update(s.accessGrants).set({revokedAt:null,expiresAt:new Date(+f.clock.now+86400000)}).where(eq(s.accessGrants.id,f.grant.id));
-  const second=await f.published();await f.editorial.archive(f.lead.token,second.id,1,randomUUID());await expect(f.auth.letter(f.member,second.id)).rejects.toMatchObject({status:404});
+  const second=await f.published();await f.editorial.archive(f.lead.token,second.id,1,randomUUID(),'other');await expect(f.auth.letter(f.member,second.id)).rejects.toMatchObject({status:404});
 });
 it('PRD §12.13 forged/replayed LINE webhook is rejected or deduped; follow/unfollow/block',async()=>{
   const event={webhookEventId:'fictional-event',type:'unfollow',timestamp:100,source:{userId:'fictional-line-subject'}};const raw=Buffer.from(JSON.stringify({events:[event]}));
