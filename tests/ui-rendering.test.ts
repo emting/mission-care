@@ -2,7 +2,7 @@ import { it, expect, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { formatDate } from '../src/ui/shared';
-import { AdminLetter } from '../src/ui/admin-panels';
+import { AdminLetter, AdminSecurity } from '../src/ui/admin-panels';
 import { AdminOverview } from '../src/ui/admin';
 import { content } from './workflow-fixture';
 
@@ -45,4 +45,10 @@ it('overview cards distinguish authorized empty, unauthorized, unavailable and a
   expect(cards[3]).toContain('3<small>件');
   expect(cards[3]).toContain('前往處理');
   expect(html).not.toContain('href="/admin/tasks"');
+});
+
+it('lockdown starts with an empty required reason and a disabled submit button',()=>{
+  const html=renderToStaticMarkup(createElement(AdminSecurity,{canLockdown:true,incidents:{items:[],count:0,next_offset:null}}));
+  expect(html).toMatch(/<select name="reasonCode" required=""><option value="" disabled="" selected="">請選擇處置原因<\/option>/);
+  expect(html).toMatch(/<button class="danger" disabled="">確認執行安全處置<\/button>/);
 });

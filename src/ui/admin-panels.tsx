@@ -913,7 +913,8 @@ export function AdminSecurity({
 }) {
   const action = useAction();
   const [target, setTarget] = useState("pauseNotifications"),
-    [confirmed, setConfirmed] = useState(false);
+    [confirmed, setConfirmed] = useState(false),
+    [reason, setReason] = useState("");
   return (
     <>
       <PageHeading
@@ -932,10 +933,11 @@ export function AdminSecurity({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!reason || !confirmed) return;
                 const form = new FormData(e.currentTarget);
                 const body = {
                   request_id: crypto.randomUUID(),
-                  reasonCode: form.get("reasonCode"),
+                  reasonCode: reason,
                   [target]: ["pauseNotifications", "disableAi"].includes(target)
                     ? true
                     : form.get("targetId"),
@@ -943,7 +945,7 @@ export function AdminSecurity({
                 action.run(
                   () => api("admin/security/lockdown", body),
                   "安全處置已執行，已建立事件與事後覆核提醒",
-                  () => setConfirmed(false),
+                  () => { setConfirmed(false); setReason(""); },
                 );
               }}
             >
@@ -976,7 +978,8 @@ export function AdminSecurity({
               )}
               <label>
                 處置原因
-                <select name="reasonCode" required>
+                <select name="reasonCode" required value={reason} onChange={(e) => { setReason(e.target.value); setConfirmed(false); }}>
+                  <option value="" disabled>請選擇處置原因</option>
                   <option value="suspected_disclosure">疑似資訊外洩</option>
                   <option value="access_violation">存取權限異常</option>
                   <option value="delivery_failure">通知發送異常</option>
@@ -996,7 +999,7 @@ export function AdminSecurity({
               </label>
               <button
                 className="danger"
-                disabled={!confirmed || action.pending}
+                disabled={!reason || !confirmed || action.pending}
               >
                 確認執行安全處置
               </button>

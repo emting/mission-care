@@ -5,6 +5,8 @@ import * as s from '../db/schema';
 import { WorkflowCore } from './core';
 import { fail } from '../services';
 import { hash } from '../security';
+import { z } from 'zod';
+export const securityReasonInput=z.enum(['suspected_disclosure','access_violation','delivery_failure','emergency_lockdown','other']);
 export function officialUrl(value:string,domains:string[]) {
   let u:URL; try { u=new URL(value); } catch { return fail(400,'invalid_official_url'); }
   if(u.protocol!=='https:' || u.username || u.password || u.port || !domains.includes(u.hostname) || u.hash) return fail(400,'invalid_official_url'); return u;
@@ -64,6 +66,7 @@ export class Governance {
   }
   async lockdown(token:string|undefined,input:LockdownInput,requestId:string) {
     const c=this.core; const {admin}=await c.auth.adminSession(token);
+    if(!securityReasonInput.safeParse(input.reasonCode).success) return fail(400,'invalid_input');
     return c.operation({actorId:admin.id,action:'security.lockdown',requestId},{...input},async db=>{
       await c.staff(db,token,'lockdown',null,true);
       if(input.pauseNotifications) await this.setting(db,'global_notification_pause',true);
