@@ -150,12 +150,12 @@ export function PageHeading({
   );
 }
 export function formatDate(value: Date | string | null | undefined) {
-  return value
-    ? new Intl.DateTimeFormat("zh-TW", {
-        timeZone: "Asia/Taipei",
-        dateStyle: "medium",
-        timeStyle: "short",
-        hour12: false,
-      }).format(new Date(value))
-    : "尚無紀錄";
+  if (!value) return "尚無紀錄";
+  const date = new Date(value);
+  if (!Number.isFinite(+date)) return "尚無紀錄";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US-u-nu-latn", {
+    timeZone: "Asia/Taipei", calendar: "gregory", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  return `${parts.year.padStart(4, "0")}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`;
 }
