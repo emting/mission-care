@@ -377,11 +377,13 @@ export function AdminOverview({ value }: { value: Overview }) {
                 <strong className="metric-state">
                   {source.status === "unavailable"
                     ? "⚠ 資料暫不可用"
-                    : "目前無授權可見資料"}
+                    : source.status === "not_authorized"
+                      ? "目前無授權可見資料"
+                      : "目前沒有待處理項目"}
                 </strong>
               )}
               <p>{card.hint}</p>
-              {source.status === "available" && (
+              {source.status === "available" && (source.count ?? 0) > 0 && (
                 <Link href={card.path} className="text-link">
                   前往處理 →
                 </Link>
@@ -397,7 +399,7 @@ export function AdminOverview({ value }: { value: Overview }) {
             <span className="badge">依授權顯示</span>
           </div>
           {cards
-            .filter((c) => value[c.key].status === "available")
+            .filter((c) => value[c.key].status === "available" && (value[c.key].count ?? 0) > 0)
             .map((c, i) => (
               <Link href={c.path} className="priority-row" key={c.key}>
                 <span className="priority-index">0{i + 1}</span>

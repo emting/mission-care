@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { formatDate } from '../src/ui/shared';
 import { AdminLetter } from '../src/ui/admin-panels';
+import { AdminOverview } from '../src/ui/admin';
 import { content } from './workflow-fixture';
 
 vi.mock('next/navigation',()=>({useRouter:()=>({refresh:vi.fn(),replace:vi.fn()})}));
@@ -25,4 +26,23 @@ it('an author without review permission sees a disabled approve control and self
   const html=renderToStaticMarkup(createElement(AdminLetter,{value}));
   expect(html).toContain('不可自行核准');
   expect(html).toMatch(/<button[^>]*disabled=""[^>]*>核准此版本<\/button>/);
+});
+
+it('overview cards distinguish authorized empty, unauthorized, unavailable and actionable sources',()=>{
+  const html=renderToStaticMarkup(createElement(AdminOverview,{value:{
+    as_of:'2026-11-21T16:05:00Z',tasks:{status:'available',count:0},
+    access_requests:{status:'not_authorized'},notification_jobs:{status:'unavailable'},incidents:{status:'available',count:3},
+  }}));
+  const cards=[...html.matchAll(/<section class="panel metric-card">(.*?)<\/section>/g)].map(m=>m[1]);
+  expect(cards).toHaveLength(4);
+  expect(cards[0]).toContain('目前沒有待處理項目');
+  expect(cards[0]).not.toContain('<a');
+  expect(cards[0]).not.toContain('目前無授權可見資料');
+  expect(cards[1]).toContain('目前無授權可見資料');
+  expect(cards[1]).not.toContain('<a');
+  expect(cards[2]).toContain('資料暫不可用');
+  expect(cards[2]).not.toContain('<a');
+  expect(cards[3]).toContain('3<small>件');
+  expect(cards[3]).toContain('前往處理');
+  expect(html).not.toContain('href="/admin/tasks"');
 });
