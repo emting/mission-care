@@ -15,7 +15,7 @@ import {
 } from "./shared";
 import { DataTable } from "./admin";
 import { riskLabels, roleLabels, type AdminIdentity } from "./navigation";
-import { canRetryNotification } from "../server/policy";
+import { canRetryNotification, canRevokeGrant } from "../server/policy";
 type Review = Awaited<ReturnType<UiReads["adminLetter"]>>;
 export function AdminLetter({ value }: { value: Review }) {
   const action = useAction();
@@ -593,7 +593,7 @@ export function AdminAccess({
                       <button
                         className="danger"
                         aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限`}
-                        disabled={action.pending || !!g.revokedAt}
+                        disabled={action.pending || !canRevokeGrant(g,new Date())}
                         onClick={() => {
                           if (
                             window.confirm(

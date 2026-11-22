@@ -29,3 +29,6 @@ export function recentMfa(verifiedAt: Date|null, now: Date) { return !!verifiedA
 export function canRetryNotification(job:{status:unknown;attempts:unknown;errorCode:unknown},eligible:boolean) {
   return eligible && (job.status==='pending' || job.status==='failed') && typeof job.attempts==='number' && job.attempts<3 && job.errorCode!=='permanent';
 }
+export function canRevokeGrant(grant:{revokedAt:Date|string|null;expiresAt:Date|string},now:Date) {
+  return !grant.revokedAt && new Date(grant.expiresAt)>now;
+}
