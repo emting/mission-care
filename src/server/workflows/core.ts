@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Database } from '../db';
 import * as s from '../db/schema';
 import * as w from '../db/workflow-schema';
-import { Services, fail } from '../services';
+import { Services, ApiError, fail } from '../services';
 import { hash, encryptSecret, decryptSecret } from '../security';
 import { recentMfa, staffCan, canViewLetter,canViewMissionary,type Permission } from '../policy';
 export const revisionInput = z.object({request_id:z.uuid(),expected_revision:z.number().int().positive()}).strict();
@@ -42,6 +42,9 @@ export class WorkflowCore {
       const result=await work(tx);
       await tx.insert(w.operations).values({requestId:c.requestId,actorId:c.actorId,action:c.action,inputHash,result});
       await this.audit(tx,c); return result;
+    }).catch(async error=>{
+      try { await this.audit(this.db,c,String(error instanceof ApiError?error.status:500)); } catch {}
+      throw error;
     });
   }
   private async authorizeReplay(db:Database,c:Context,input:unknown) {

@@ -68,17 +68,27 @@ export class Governance {
     const c=this.core; const {admin}=await c.auth.adminSession(token);
     if(!securityReasonInput.safeParse(input.reasonCode).success) return fail(400,'invalid_input');
     return c.operation({actorId:admin.id,action:'security.lockdown',requestId},{...input},async db=>{
-      await c.staff(db,token,'lockdown',null,true);
+      if(input.pauseNotifications || input.disableAi) await c.staff(db,token,'lockdown',null,true);
       if(input.pauseNotifications) await this.setting(db,'global_notification_pause',true);
       if(input.disableAi) await this.setting(db,'ai_import_disabled',true);
       if(input.letterId) {
         const l=await c.letter(db,input.letterId);
+        await c.staff(db,token,'lockdown',l.missionaryId,true);
         await db.update(s.letters).set({status:'archived',archivedAt:c.now()}).where(eq(s.letters.id,l.id)); await c.cancelLetterJobs(db,l.id);
       }
       if(input.grantId) {
-        const [g]=await db.update(s.accessGrants).set({revokedAt:c.now()}).where(eq(s.accessGrants.id,input.grantId)).returning(); if(g) await c.cancelJobs(db,g.missionaryId,g.userId);
+        const [g]=await db.select().from(s.accessGrants).where(eq(s.accessGrants.id,input.grantId));
+        if(!g) return fail(404,'not_found');
+        await c.staff(db,token,'lockdown',g.missionaryId,true);
+        await db.update(s.accessGrants).set({revokedAt:c.now()}).where(eq(s.accessGrants.id,g.id));
+        await c.cancelJobs(db,g.missionaryId,g.userId);
       }
-      if(input.adminId) await db.update(s.admins).set({sessionVersion:sql`${s.admins.sessionVersion}+1`}).where(eq(s.admins.id,input.adminId));
+      if(input.adminId) {
+        const [target]=await db.select({id:s.admins.id}).from(s.admins).where(eq(s.admins.id,input.adminId));
+        if(!target) return fail(404,'not_found');
+        await c.staff(db,token,'lockdown',null,true);
+        await db.update(s.admins).set({sessionVersion:sql`${s.admins.sessionVersion}+1`}).where(eq(s.admins.id,target.id));
+      }
       const [incident]=await db.insert(s.securityIncidents).values({category:'emergency_lockdown',severity:'high',reasonCode:input.reasonCode,reportedBy:admin.id}).returning();
       await db.insert(s.adminAlerts).values({category:'post_incident_review',safeSummary:'緊急封鎖需要事後覆核'}); return {id:incident.id,status:'locked_down'};
     });

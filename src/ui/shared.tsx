@@ -14,7 +14,7 @@ export const errorLabels: Record<string, string> = {
   self_approval: "不可審核自己提交或編輯的內容。",
   already_reviewed: "你已審核此版本，需由另一位審核人處理。",
   forbidden: "目前身分無權限執行此操作。",
-  not_found: "此資料不存在或目前無權限檢視。",
+  not_found: "找不到指定資料，或你沒有操作權限。請核對目標代號與授權範圍。",
   invalid_input: "請確認輸入內容與格式。",
   invalid_identity: "LINE 登入驗證失敗，請重新登入。",
   replayed_identity: "此登入憑證已使用，請重新取得 LINE 登入憑證。",
