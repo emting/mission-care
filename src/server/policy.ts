@@ -26,3 +26,6 @@ export function staffCan(adminId: string, assignments: Assignment[], permission:
 export function canApprove(actor: string, requester: string) { return actor !== requester; }
 export function hasDualControl(requester: string, approvers: string[], required = 2) { return new Set(approvers.filter(a => canApprove(a,requester))).size >= required; }
 export function recentMfa(verifiedAt: Date|null, now: Date) { return !!verifiedAt && verifiedAt <= now && now.getTime() - verifiedAt.getTime() < 5 * 60_000; }
+export function canRetryNotification(job:{status:unknown;attempts:unknown;errorCode:unknown},eligible:boolean) {
+  return eligible && (job.status==='pending' || job.status==='failed') && typeof job.attempts==='number' && job.attempts<3 && job.errorCode!=='permanent';
+}

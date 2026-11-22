@@ -5,6 +5,7 @@ import { WorkflowCore } from './core';
 import { ApiError,fail } from '../services';
 import type { Permission } from '../policy';
 import { hash } from '../security';
+import { notificationRecipientEligible } from './delivery';
 export type ReadKind='tasks'|'missionaries'|'letters'|'access-requests'|'audit'|'notification-jobs'|'incidents';
 export const pageInput={limit:50,maxOffset:10000};
 export class AdminReads {
@@ -35,6 +36,7 @@ export class AdminReads {
     } else if(kind==='notification-jobs') {
       const where=and(missionaryFilter(s.letters.missionaryId),overview?or(eq(s.deliveryJobs.status,'failed'),and(eq(s.deliveryJobs.status,'pending'),sql`${s.deliveryJobs.scheduledAt} < ${new Date(+c.now()-3600000)}`)):undefined);
       items=await c.db.select({id:s.deliveryJobs.id,letterId:s.deliveryJobs.letterId,status:s.deliveryJobs.status,attempts:s.deliveryJobs.attempts,errorCode:s.deliveryJobs.errorCode}).from(s.deliveryJobs).innerJoin(s.letters,eq(s.letters.id,s.deliveryJobs.letterId)).where(where).orderBy(s.deliveryJobs.id).limit(limit).offset(offset);
+      items=await Promise.all((items as {id:string}[]).map(async job=>({...job,retryEligible:await notificationRecipientEligible(c,job.id)})));
       [{total}]=await c.db.select({total:count()}).from(s.deliveryJobs).innerJoin(s.letters,eq(s.letters.id,s.deliveryJobs.letterId)).where(where);
     } else if(kind==='incidents') {
       const where=and(missionaryFilter(s.securityIncidents.missionaryId),overview?sql`${s.securityIncidents.status} <> 'closed'`:undefined);

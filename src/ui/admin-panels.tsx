@@ -15,6 +15,7 @@ import {
 } from "./shared";
 import { DataTable } from "./admin";
 import { riskLabels, roleLabels, type AdminIdentity } from "./navigation";
+import { canRetryNotification } from "../server/policy";
 type Review = Awaited<ReturnType<UiReads["adminLetter"]>>;
 export function AdminLetter({ value }: { value: Review }) {
   const action = useAction();
@@ -748,7 +749,7 @@ export function AdminNotifications({
                     >
                       來源版本 →
                     </Link>
-                    {row.status === "failed" && (
+                    {canRetryNotification({status:row.status,attempts:row.attempts,errorCode:row.errorCode},row.retryEligible===true) && (
                       <button
                         className="secondary"
                         disabled={action.pending}

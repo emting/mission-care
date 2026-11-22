@@ -5,7 +5,7 @@ import * as s from '../db/schema';
 import * as w from '../db/workflow-schema';
 import { WorkflowCore } from './core';
 import { decryptSecret,hash } from '../security';
-import { canViewLetter } from '../policy';
+import { canViewLetter, canRetryNotification } from '../policy';
 import { fail } from '../services';
 import type { Database } from '../db';
 import { rememberLineFriendship, rememberIdentityFriendship } from '../line-friendship';
@@ -23,15 +23,22 @@ export class LineMessagingClient implements MessagingClient {
 }
 export function secretMatches(received:string|null,expected:string) { if(!received || !expected) return false; return timingSafeEqual(Buffer.from(hash(received),'hex'),Buffer.from(hash(expected),'hex')); }
 const webhookSchema=z.object({events:z.array(z.object({webhookEventId:z.string().min(1).max(200),type:z.string().max(40),timestamp:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),source:z.object({userId:z.string().min(1).max(200)}).passthrough()}).passthrough()).max(100)}).passthrough();
+export async function notificationIdentity(c:WorkflowCore,db:Database,job:typeof s.deliveryJobs.$inferSelect) {
+  const l=await c.letter(db,job.letterId); const m=await c.missionary(db,l.missionaryId);
+  const [user]=await db.select().from(s.users).where(eq(s.users.id,job.userId));
+  const [sub]=await db.select().from(s.subscriptions).where(and(eq(s.subscriptions.userId,job.userId),eq(s.subscriptions.missionaryId,m.id)));
+  const [identity]=await db.select().from(s.lineIdentities).where(eq(s.lineIdentities.userId,job.userId));
+  const grants=await db.select().from(s.accessGrants).where(eq(s.accessGrants.userId,job.userId));
+  return user?.enabled && sub?.pushOptIn && identity?.friendEligible && !identity.blockedAt && identity.encryptedSub && job.revision===l.revision && canViewLetter(user.id,m,l,grants,c.now()) ? identity:null;
+}
+export async function notificationRecipientEligible(c:WorkflowCore,id:string) {
+  const [job]=await c.db.select().from(s.deliveryJobs).where(eq(s.deliveryJobs.id,id));
+  return !!job && !!await notificationIdentity(c,c.db,job);
+}
 export class Delivery {
   constructor(public core:WorkflowCore,private client:MessagingClient,private subjectKey:string,private webhookSecret:string) {}
   async eligible(db:Database,job:typeof s.deliveryJobs.$inferSelect) {
-    const c=this.core; const l=await c.letter(db,job.letterId); const m=await c.missionary(db,l.missionaryId);
-    const [user]=await db.select().from(s.users).where(eq(s.users.id,job.userId));
-    const [sub]=await db.select().from(s.subscriptions).where(and(eq(s.subscriptions.userId,job.userId),eq(s.subscriptions.missionaryId,m.id)));
-    const [identity]=await db.select().from(s.lineIdentities).where(eq(s.lineIdentities.userId,job.userId));
-    const grants=await db.select().from(s.accessGrants).where(eq(s.accessGrants.userId,job.userId));
-    return user?.enabled && sub?.pushOptIn && identity?.friendEligible && !identity.blockedAt && identity.encryptedSub && job.revision===l.revision && canViewLetter(user.id,m,l,grants,c.now()) ? identity:null;
+    return notificationIdentity(this.core,db,job);
   }
   async dispatch() {
     const c=this.core;
@@ -65,7 +72,7 @@ export class Delivery {
     return c.operation({actorId:admin.id,action:'notification.retry',requestId,resourceId:id},{id},async db=>{
       const [job]=await db.select().from(s.deliveryJobs).where(eq(s.deliveryJobs.id,id)); if(!job) return fail(404,'not_found');
       const letter=await c.letter(db,job.letterId); await c.staff(db,token,'assign',letter.missionaryId);
-      if(!['failed','pending'].includes(job.status) || job.attempts>=3 || job.errorCode==='permanent' || !await this.eligible(db,job)) return fail(409,'not_retryable');
+      if(!canRetryNotification(job,!!await this.eligible(db,job))) return fail(409,'not_retryable');
       await db.update(s.deliveryJobs).set({status:'pending',scheduledAt:c.now()}).where(eq(s.deliveryJobs.id,id)); return {queued:true};
     });
   }

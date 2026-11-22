@@ -9,6 +9,7 @@ import { decryptSecret, hash } from "./security";
 import { aiOutput } from "./ai";
 import { scanSensitive } from "./ai";
 import type { AdminIdentity } from "../ui/navigation";
+import { notificationRecipientEligible } from "./workflows/delivery";
 
 export class UiReads {
   constructor(public core: WorkflowCore) {}
@@ -299,8 +300,9 @@ export class UiReads {
       .from(s.deliveryJobs)
       .innerJoin(s.letters, eq(s.deliveryJobs.letterId, s.letters.id))
       .where(where);
+    const retryItems=await Promise.all(items.map(async job=>({...job,retryEligible:await notificationRecipientEligible(c,job.id)})));
     return {
-      items,
+      items:retryItems,
       count: total.count,
       next_offset:
         offset + items.length < total.count ? offset + items.length : null,
