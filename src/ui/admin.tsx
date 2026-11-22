@@ -449,7 +449,8 @@ const columns: Record<string, { key: string; label: string }[]> = {
   ],
   "access-requests": [
     { key: "id", label: "申請代號" },
-    { key: "missionaryId", label: "授權對象" },
+    { key: "missionaryCode", label: "宣教士代號" },
+    { key: "memberCode", label: "會友代號" },
     { key: "status", label: "申請狀態" },
     { key: "createdAt", label: "申請時間" },
   ],

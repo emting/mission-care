@@ -31,7 +31,8 @@ export class AdminReads {
       [{total}]=await c.db.select({total:overview?sql<number>`count(distinct ${s.reviewTasks.letterId})::int`:count()}).from(s.reviewTasks).innerJoin(s.letters,eq(s.letters.id,s.reviewTasks.letterId)).where(where);
     } else if(kind==='access-requests') {
       const where=and(missionaryFilter(s.accessRequests.missionaryId),overview?eq(s.accessRequests.status,'pending'):undefined);
-      items=await c.db.select({id:s.accessRequests.id,missionaryId:s.accessRequests.missionaryId,status:s.accessRequests.status,createdAt:s.accessRequests.createdAt}).from(s.accessRequests).where(where).orderBy(s.accessRequests.id).limit(limit).offset(offset);
+      const requests=await c.db.select({id:s.accessRequests.id,missionaryId:s.accessRequests.missionaryId,missionaryCode:s.missionaries.code,memberId:s.accessRequests.userId,status:s.accessRequests.status,createdAt:s.accessRequests.createdAt}).from(s.accessRequests).innerJoin(s.missionaries,eq(s.missionaries.id,s.accessRequests.missionaryId)).where(where).orderBy(s.accessRequests.id).limit(limit).offset(offset);
+      items=requests.map(({memberId,...request})=>({...request,memberCode:`U-${hash(memberId).slice(0,12).toUpperCase()}`}));
       [{total}]=await c.db.select({total:count()}).from(s.accessRequests).where(where);
     } else if(kind==='notification-jobs') {
       const where=and(missionaryFilter(s.letters.missionaryId),overview?or(eq(s.deliveryJobs.status,'failed'),and(eq(s.deliveryJobs.status,'pending'),sql`${s.deliveryJobs.scheduledAt} < ${new Date(+c.now()-3600000)}`)):undefined);
