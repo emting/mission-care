@@ -30,10 +30,19 @@ export function createHandler(endpoint: Endpoint, service: () => Services, origi
       const mutating = req.method !== 'GET';
       if (mutating) mutationGuard(req,origin);
       // Proxy headers are deliberately not trusted; replace limiter with a trusted-edge implementation in production.
-      if (!limiter.consume(endpoint)) return fail(429,'rate_limited');
+      const memberEndpoint=['logout','missionaries','letters','letter'].includes(endpoint);
+      if (!memberEndpoint && !limiter.consume(endpoint)) return fail(429,'rate_limited');
       const svc = service(); const member = cookie(req,memberCookie); const admin = cookie(req,adminCookie);
       if(['mfa','adminLogout','overview'].includes(endpoint)) {actorId=(await svc.adminSession(admin,endpoint==='overview')).admin.id; actorType='staff';}
-      else if(['logout','missionaries','letters','letter'].includes(endpoint)) {actorId=(await svc.member(member)).id; actorType='member';}
+      else if(memberEndpoint) {
+        try { actorId=(await svc.member(member)).id; }
+        catch(error) {
+          if(!limiter.consume(endpoint+':anonymous')) return fail(429,'rate_limited');
+          throw error;
+        }
+        actorType='member';
+        if(!limiter.consume(endpoint+':member:'+actorId)) return fail(429,'rate_limited');
+      }
       const body = mutating ? await req.json().catch(()=>fail(400,'invalid_input')) : {};
       switch(endpoint) {
         case 'challenge': { const nonce = await svc.challenge(); headers.set('Set-Cookie',setCookie('__Host-mc_nonce',nonce,300)); return respond({nonce}); }
