@@ -5,6 +5,7 @@ import * as s from './db/schema';
 import { hash, randomToken, verifyPassword, decryptSecret, encryptSecret } from './security';
 import { lineSubject, type LineVerifier } from './line';
 import { canViewLetter, canViewMissionary, staffCan, type Permission } from './policy';
+import { lineFriendship } from './line-friendship';
 export class ApiError extends Error { constructor(public status: number, public code: string) { super(code); } }
 export const fail = (status: number, code: string): never => { throw new ApiError(status,code); };
 export class Services {
@@ -23,7 +24,8 @@ export class Services {
         return identity.userId;
       }
       const [user] = await tx.insert(s.users).values({}).returning();
-      await tx.insert(s.lineIdentities).values({ userId:user.id,provider:this.channel,subHash,encryptedSub:encryptSecret(sub,this.subjectKey) }); return user.id;
+      const friendship=await lineFriendship(tx,subHash);
+      await tx.insert(s.lineIdentities).values({ userId:user.id,provider:this.channel,subHash,encryptedSub:encryptSecret(sub,this.subjectKey),...friendship }); return user.id;
     });
     const [user] = await this.db.select().from(s.users).where(eq(s.users.id,userId));
     if (!user.enabled) return fail(403,'account_disabled');

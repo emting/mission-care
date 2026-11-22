@@ -8,6 +8,7 @@ import { decryptSecret,hash } from '../security';
 import { canViewLetter } from '../policy';
 import { fail } from '../services';
 import type { Database } from '../db';
+import { rememberLineFriendship } from '../line-friendship';
 export interface MessagingClient { send(subject:string,text:string,retryKey:string):Promise<'accepted'|'retryable'|'permanent'|'quota'> }
 export class LineMessagingClient implements MessagingClient {
   constructor(private accessToken:string) {}
@@ -79,6 +80,7 @@ export class Delivery {
       if(!row) return;
       const follow=event.type==='follow'; const unfollow=event.type==='unfollow' || event.type==='block';
       if(follow || unfollow) {
+        await rememberLineFriendship(db,hash(event.source.userId),follow,this.core.now());
         const identities=await db.update(s.lineIdentities).set({friendEligible:follow,blockedAt:follow?null:this.core.now()}).where(eq(s.lineIdentities.subHash,hash(event.source.userId))).returning();
         if(unfollow) for(const identity of identities) await db.update(s.deliveryJobs).set({status:'cancelled'}).where(and(eq(s.deliveryJobs.userId,identity.userId),inArray(s.deliveryJobs.status,['pending','failed'])));
       }
