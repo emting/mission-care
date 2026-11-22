@@ -2,7 +2,7 @@ import { it, expect, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { formatDate, Feedback } from '../src/ui/shared';
-import { AdminLetter, AdminSecurity } from '../src/ui/admin-panels';
+import { AdminLetter, AdminSecurity, AdminAccess } from '../src/ui/admin-panels';
 import { AdminOverview } from '../src/ui/admin';
 import { content } from './workflow-fixture';
 
@@ -59,4 +59,16 @@ it('operation receipts label the action and transport IDs distinctly, retaining 
   const error=renderToStaticMarkup(createElement(Feedback,{value:{ok:false,text:'未完成',id:'fictional-http'}}));
   expect(error).toContain('request_id：fictional-http');
   expect(error).not.toContain('action_request_id');
+});
+
+it('grant revocation rows identify the missionary, pseudonymous member and optional approved request',()=>{
+  const html=renderToStaticMarkup(createElement(AdminAccess,{requests:{items:[],count:0,next_offset:null},offset:0,grants:[
+    {id:'fictional-grant',missionaryId:'fictional-missionary',missionaryCode:'M-EXAMPLE',memberCode:'U-ABCDEF123456',requestId:'fictional-request',expiresAt:new Date('2030-01-01'),revokedAt:null},
+    {id:'fictional-legacy',missionaryId:'fictional-missionary',missionaryCode:'M-EXAMPLE',memberCode:'U-ABCDEF123456',requestId:null,expiresAt:new Date('2030-01-01'),revokedAt:null},
+  ]}));
+  expect(html).toContain('M-EXAMPLE');
+  expect(html).toContain('U-ABCDEF123456');
+  expect(html).toContain('title="fictional-request"');
+  expect(html).toContain('無申請參照');
+  expect(html).toContain('aria-label="撤銷 U-ABCDEF123456 對 M-EXAMPLE 的觀看授權"');
 });

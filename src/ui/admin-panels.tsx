@@ -554,6 +554,9 @@ export function AdminAccess({
               <thead>
                 <tr>
                   <th>授權代號</th>
+                  <th>宣教士代號</th>
+                  <th>會友代號</th>
+                  <th>核准申請參照</th>
                   <th>有效期限</th>
                   <th>狀態</th>
                   <th>操作</th>
@@ -563,8 +566,11 @@ export function AdminAccess({
                 {grants.map((g) => (
                   <tr key={g.id}>
                     <td>
-                      <code>{g.id.slice(0, 8)}</code>
+                      <code title={g.id}>{g.id.slice(0, 8)}</code>
                     </td>
+                    <td><code>{g.missionaryCode}</code></td>
+                    <td><code>{g.memberCode}</code></td>
+                    <td>{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</td>
                     <td>{formatDate(g.expiresAt)}</td>
                     <td>
                       {g.revokedAt
@@ -576,11 +582,12 @@ export function AdminAccess({
                     <td>
                       <button
                         className="danger"
+                        aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的觀看授權`}
                         disabled={action.pending || !!g.revokedAt}
                         onClick={() => {
                           if (
                             window.confirm(
-                              "撤銷後會立即阻斷存取，並取消候發通知。確認撤銷？",
+                              `確認撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的觀看授權？撤銷後會立即阻斷存取，並取消候發通知。`,
                             )
                           )
                             action.run(

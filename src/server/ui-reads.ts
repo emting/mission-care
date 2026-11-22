@@ -1,11 +1,11 @@
-import { and, eq, inArray, ne, count } from "drizzle-orm";
+import { and, eq, inArray, ne, count, desc } from "drizzle-orm";
 import * as s from "./db/schema";
 import * as w from "./db/workflow-schema";
 import { WorkflowCore } from "./workflows/core";
 import { Members, taipeiDate } from "./workflows/members";
 import { fail } from "./services";
 import { permissions, recentMfa, staffCan, type Permission } from "./policy";
-import { decryptSecret } from "./security";
+import { decryptSecret, hash } from "./security";
 import { aiOutput } from "./ai";
 import { scanSensitive } from "./ai";
 import type { AdminIdentity } from "../ui/navigation";
@@ -235,20 +235,39 @@ export class UiReads {
   async grants(token: string | undefined) {
     const c = this.core;
     const scope = await c.scope(c.db, token, "access_decide");
-    return c.db
+    const grants = await c.db
       .select({
         id: s.accessGrants.id,
         missionaryId: s.accessGrants.missionaryId,
+        missionaryCode: s.missionaries.code,
+        userId: s.accessGrants.userId,
+        approvedBy: s.accessGrants.approvedBy,
         expiresAt: s.accessGrants.expiresAt,
         revokedAt: s.accessGrants.revokedAt,
       })
       .from(s.accessGrants)
+      .innerJoin(s.missionaries, eq(s.missionaries.id, s.accessGrants.missionaryId))
       .where(
         scope.global
           ? undefined
           : inArray(s.accessGrants.missionaryId, scope.ids),
       )
       .limit(50);
+    if (!grants.length) return [];
+    const requests = await c.db.select({
+      id: s.accessRequests.id, userId: s.accessRequests.userId,
+      missionaryId: s.accessRequests.missionaryId, decidedBy: s.accessRequests.decidedBy,
+    }).from(s.accessRequests).where(and(
+      inArray(s.accessRequests.userId, grants.map(g => g.userId)),
+      inArray(s.accessRequests.missionaryId, grants.map(g => g.missionaryId)),
+      eq(s.accessRequests.status, "approved"),
+    )).orderBy(desc(s.accessRequests.decidedAt), desc(s.accessRequests.id));
+    return grants.map(({userId, approvedBy, ...grant}) => ({
+      ...grant,
+      memberCode: `U-${hash(userId).slice(0, 12).toUpperCase()}`,
+      requestId: approvedBy ? requests.find(r => r.userId === userId &&
+        r.missionaryId === grant.missionaryId && r.decidedBy === approvedBy)?.id ?? null : null,
+    }));
   }
   async notifications(token: string | undefined, tab: string, offset: number) {
     const c = this.core;
