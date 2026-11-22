@@ -1,6 +1,14 @@
 # Mission Care｜宣教關懷與代禱平台
 
-Step 3 member and admin UI with backend workflows. Proposal only; not church-approved or production-ready. All test data are fictional. No donation processing or external AI calls. Notification delivery requires explicit configuration and starts globally paused.
+**提案 MVP：所有資料均為虛構，未經教會核准，尚未具備正式上線條件。**
+
+Member and admin UI with backend workflows. Proposal only; not church-approved or production-ready. All test data are fictional. No donation processing or external AI calls. Notification delivery requires explicit configuration and starts globally paused.
+
+安全與治理文件：[威脅模型／殘餘風險](docs/threat-model.md)、[尚待教會決策（全部未核准）](docs/pending-church-decisions.md)、[驗收證據與未完成發布門檻](docs/checklist-coverage.md)。
+
+## CI
+
+`.github/workflows/ci.yml` 在 push／pull request 執行 Node 22、`pnpm install --frozen-lockfile`、`pnpm check`、`pnpm test`、`pnpm build`，另以獨立 gitleaks job 掃描 secrets。pnpm 版本取自 `package.json`；PGlite 測試不需要 PostgreSQL 或正式憑證。CI 通過不是教會批准或正式上線許可。
 
 ## 本機試用（不需 PostgreSQL）
 
