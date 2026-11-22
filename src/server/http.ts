@@ -20,8 +20,9 @@ export type Endpoint = 'challenge'|'line'|'liff'|'logout'|'password'|'mfa'|'admi
 export function createHandler(endpoint: Endpoint, service: () => Services, origin: string, limiter: RateLimiter, liff = {verifier:verifyLiff as LiffVerifier,channel:process.env.LINE_LIFF_CHANNEL_ID ?? process.env.LINE_LOGIN_CHANNEL_ID ?? '',key:process.env.LINE_SUBJECT_ENC_KEY ?? ''}) {
   return async (req: Request, id?: string) => {
     const request_id = randomUUID(); const headers = new Headers({'Cache-Control':'no-store','Content-Type':'application/json','X-Request-Id':request_id});
+    let actorId:string|undefined; let actorType='request';
     const respond = async (data: unknown,status=200) => {
-      try { await service().db.insert(auditEvents).values({actorType:'request',action:'api.'+endpoint,requestId:request_id,outcome:'success'}); }
+      try { await service().db.insert(auditEvents).values({actorId,actorType,action:'api.'+endpoint,requestId:request_id,outcome:'success'}); }
       catch { return new Response(JSON.stringify({error:{code:'internal_error'},request_id}),{status:500,headers}); }
       return new Response(JSON.stringify({data,request_id}),{status,headers});
     };
@@ -31,13 +32,15 @@ export function createHandler(endpoint: Endpoint, service: () => Services, origi
       // Proxy headers are deliberately not trusted; replace limiter with a trusted-edge implementation in production.
       if (!limiter.consume(endpoint)) return fail(429,'rate_limited');
       const svc = service(); const member = cookie(req,memberCookie); const admin = cookie(req,adminCookie);
+      if(['mfa','adminLogout','overview'].includes(endpoint)) {actorId=(await svc.adminSession(admin,endpoint==='overview')).admin.id; actorType='staff';}
+      else if(['logout','missionaries','letters','letter'].includes(endpoint)) {actorId=(await svc.member(member)).id; actorType='member';}
       const body = mutating ? await req.json().catch(()=>fail(400,'invalid_input')) : {};
       switch(endpoint) {
         case 'challenge': { const nonce = await svc.challenge(); headers.set('Set-Cookie',setCookie('__Host-mc_nonce',nonce,300)); return respond({nonce}); }
-        case 'line': { const b = schemas.line.parse(body); if (cookie(req,'__Host-mc_nonce') !== b.nonce) return fail(401,'invalid_identity'); const token = await svc.loginLine(b.idToken,b.nonce); headers.set('Set-Cookie',setCookie(memberCookie,token,3600)); return respond({authenticated:true}); }
-        case 'liff': { const b = schemas.line.parse(body); if (cookie(req,'__Host-mc_nonce') !== b.nonce) return fail(401,'invalid_identity'); const token = await loginLiff(svc,b.idToken,b.nonce,liff.channel,liff.key,liff.verifier); headers.append('Set-Cookie',setCookie('__Host-mc_nonce','',0)); headers.append('Set-Cookie',setCookie(memberCookie,token,3600)); return respond({authenticated:true}); }
+        case 'line': { const b = schemas.line.parse(body); if (cookie(req,'__Host-mc_nonce') !== b.nonce) return fail(401,'invalid_identity'); const token = await svc.loginLine(b.idToken,b.nonce); actorId=(await svc.member(token)).id; actorType='member'; headers.set('Set-Cookie',setCookie(memberCookie,token,3600)); return respond({authenticated:true}); }
+        case 'liff': { const b = schemas.line.parse(body); if (cookie(req,'__Host-mc_nonce') !== b.nonce) return fail(401,'invalid_identity'); const token = await loginLiff(svc,b.idToken,b.nonce,liff.channel,liff.key,liff.verifier); actorId=(await svc.member(token)).id; actorType='member'; headers.append('Set-Cookie',setCookie('__Host-mc_nonce','',0)); headers.append('Set-Cookie',setCookie(memberCookie,token,3600)); return respond({authenticated:true}); }
         case 'logout': await svc.logout(member ?? ''); headers.set('Set-Cookie',setCookie(memberCookie,'',0)); return respond({authenticated:false});
-        case 'password': { const b = schemas.password.parse(body); const token = await svc.passwordLogin(b.email,b.password); headers.set('Set-Cookie',setCookie(adminCookie,token,300)); return respond({aal:'aal1',mfa_required:true}); }
+        case 'password': { const b = schemas.password.parse(body); const token = await svc.passwordLogin(b.email,b.password); actorId=(await svc.adminSession(token,false)).admin.id; actorType='staff'; headers.set('Set-Cookie',setCookie(adminCookie,token,300)); return respond({aal:'aal1',mfa_required:true}); }
         case 'mfa': { const b = schemas.mfa.parse(body); const token = await svc.mfa(admin,b.code); headers.set('Set-Cookie',setCookie(adminCookie,token,1800)); return respond({aal:'aal2'}); }
         case 'adminLogout': { const {admin:a} = await svc.adminSession(admin,false); await svc.invalidateAdmin(a.id); headers.set('Set-Cookie',setCookie(adminCookie,'',0)); return respond({authenticated:false}); }
         case 'overview': await svc.staff(admin,'overview'); return respond({status:'foundation_only'});
@@ -47,7 +50,7 @@ export function createHandler(endpoint: Endpoint, service: () => Services, origi
       }
     } catch (error) {
       const status = error instanceof ApiError ? error.status : error instanceof z.ZodError ? 400 : 500;
-      try { await service().db.insert(auditEvents).values({actorType:'request',action:'api.'+endpoint,requestId:request_id,outcome:String(status)}); } catch { /* Do not expose database failures. */ }
+      try { await service().db.insert(auditEvents).values({actorId,actorType,action:'api.denied',requestId:request_id,outcome:String(status)}); } catch { /* Do not expose database failures. */ }
       return new Response(JSON.stringify({error:{code:error instanceof ApiError ? error.code : status === 400 ? 'invalid_input' : 'internal_error'},request_id}),{status,headers});
     }
   };

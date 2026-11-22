@@ -1,6 +1,8 @@
 import {beforeAll,afterAll,it,expect} from 'vitest';
 import {fixture,type Fixture,s,randomUUID,eq} from './workflow-fixture';
 import {hash} from '../src/server/security';
+import {MemoryRateLimiter} from '../src/server/security';
+import {createHandler} from '../src/server/http';
 let f:Fixture;
 beforeAll(async()=>{f=await fixture();});
 afterAll(async()=>{await f.pg.close();});
@@ -29,4 +31,15 @@ it('audit API identifies staff by email and members by safe code, with safe anon
   expect(events.find(e=>e.requestId===unknownId)?.actorLabel).toBe('未登入／無法辨識');
   expect(events.find(e=>e.requestId===systemId)?.actorLabel).toBe('系統');
   expect(JSON.stringify(body)).not.toMatch(/fictional-line-subject|subHash|encryptedSub|passwordHash|totpSecret/);
+});
+it('member content reads and denied content reads preserve the member actor too',async()=>{
+  const handler=createHandler('letter',()=>f.auth,'https://care.example',new MemoryRateLimiter(100));
+  const letter=await f.published();
+  for(const [id,status] of [[letter.id,200],[randomUUID(),404]] as const) {
+    const response=await handler(f.request('letters/'+id),id);
+    expect(response.status).toBe(status);
+    const body=await response.json();
+    const [audit]=await f.db.select().from(s.auditEvents).where(eq(s.auditEvents.requestId,body.request_id));
+    expect(audit).toMatchObject({actorId:f.user.id,actorType:'member',action:status===200?'api.letter':'api.denied',outcome:status===200?'success':'404'});
+  }
 });
