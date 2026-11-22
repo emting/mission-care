@@ -31,4 +31,4 @@
 
 `tests/security.test.ts`、`policy.test.ts`、`editorial.test.ts`、`ai-media.test.ts`、`delivery-members.test.ts`、`governance-reads.test.ts`、`liff.test.ts`、`ui.test.ts` 涵蓋服務／route 的可測邊界；本機 Chromium 截圖及互動檢查見 README。CI 使用 Node 22、相同 SQL migrations 的 PGlite 測試及正式建置；gitleaks 掃描 Git 變更，禁止把開發憑證或原稿當成例外放行。第三方 Actions 固定 commit、工作權限僅讀取，不使用 `pull_request_target`，不向 PR 提供正式憑證。
 
-CI 通過不代表教會批准、安全認證或完整 PRD 驗收。真實 LINE、部署快取、金鑰輪替、災難復原、刪除履行、WCAG／螢幕閱讀器、專業安全與法務審查仍是待辦。套件／Action 及供應鏈本身亦須持續追蹤；目前 gitleaks Action 在個人帳號使用不需 license，若移轉組織須先確認其授權要求。
+CI 通過不代表教會批准、安全認證或完整 PRD 驗收。真實 LINE、部署快取、金鑰輪替、災難復原、刪除履行、WCAG／螢幕閱讀器、專業安全與法務審查仍是待辦。套件／Action 及供應鏈本身亦須持續追蹤；gitleaks 使用固定版本、驗證 release checksum 的開源 CLI 掃描完整 Git 歷史，不使用需組織授權金鑰的 Action 包裝器。
