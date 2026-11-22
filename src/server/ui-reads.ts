@@ -82,6 +82,15 @@ export class UiReads {
       ),
     };
   }
+  async memberAccess(token:string|undefined) {
+    const c=this.core,user=await c.auth.member(token);
+    const requests=await c.db.select({id:s.accessRequests.id,missionaryCode:s.missionaries.code,status:s.accessRequests.status}).from(s.accessRequests).innerJoin(s.missionaries,eq(s.missionaries.id,s.accessRequests.missionaryId)).where(eq(s.accessRequests.userId,user.id)).orderBy(desc(s.accessRequests.createdAt),desc(s.accessRequests.id));
+    const grants=await c.db.select({id:s.accessGrants.id,missionaryCode:s.missionaries.code,expiresAt:s.accessGrants.expiresAt,revokedAt:s.accessGrants.revokedAt}).from(s.accessGrants).innerJoin(s.missionaries,eq(s.missionaries.id,s.accessGrants.missionaryId)).where(eq(s.accessGrants.userId,user.id)).orderBy(s.missionaries.code);
+    return {
+      requests:requests.map(r=>({...r,status:r.status==='pending'?'審核中':r.status==='approved'?'已核准':r.status==='rejected'?'未通過':'狀態待確認'})),
+      grants:grants.map(({revokedAt,...g})=>({...g,status:revokedAt?'已撤銷':g.expiresAt<=c.now()?'已到期':'已核准'})),
+    };
+  }
   async memberLetter(token: string | undefined, id: string) {
     const c = this.core;
     const user = await c.auth.member(token);

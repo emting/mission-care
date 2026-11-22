@@ -73,7 +73,7 @@ export async function MemberScreen({ parts = [] }: { parts?: string[] }) {
     const user = await d.core.auth.member(token);
     const reads = new UiReads(d.core);
     let content: React.ReactNode;
-    if (privacy) content = <MemberPrivacy authenticated />;
+    if (privacy) content = <MemberPrivacy authenticated access={await reads.memberAccess(token)} />;
     else if (!parts.length)
       content = <MemberList items={await reads.memberList(token)} />;
     else if (parts.length === 2 && parts[0] === "missionaries")

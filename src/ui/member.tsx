@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UiReads } from "../server/ui-reads";
-import { api, ClientError, Feedback, useAction, Empty } from "./shared";
+import { api, ClientError, Feedback, useAction, Empty, formatDate } from "./shared";
 type List = Awaited<ReturnType<UiReads["memberList"]>>;
 type Missionary = Awaited<ReturnType<UiReads["memberMissionary"]>>;
 type Letter = Awaited<ReturnType<UiReads["memberLetter"]>>;
@@ -405,7 +405,7 @@ export function MemberLetter({
     </>
   );
 }
-export function MemberPrivacy({ authenticated }: { authenticated: boolean }) {
+export function MemberPrivacy({ authenticated,access }: { authenticated: boolean;access?:Awaited<ReturnType<UiReads['memberAccess']>> }) {
   const action = useAction(false);
   const router = useRouter();
   const [confirmed, setConfirmed] = useState(false);
@@ -421,6 +421,13 @@ export function MemberPrivacy({ authenticated }: { authenticated: boolean }) {
         <p>只保留關懷服務所需的最少資料。</p>
       </section>
       <section className="panel prose">
+        {authenticated && <section aria-labelledby="my-reading-access"><h2 id="my-reading-access">我的閱讀權限</h2>
+          {!access?.requests.length && !access?.grants.length ? <p>目前沒有閱讀權限或申請紀錄。</p> : <>
+            <h3>目前閱讀權限</h3><ul>{access?.grants.map(g=><li key={g.id}><strong>{g.missionaryCode}</strong>：{g.status}{g.status==='已核准'?`（到期日：${formatDate(g.expiresAt)}）`:null}</li>)}</ul>
+            <h3>申請紀錄</h3><ul>{access?.requests.map(r=><li key={r.id}><strong>{r.missionaryCode}</strong>：{r.status}</li>)}</ul>
+          </>}
+          <p><Link href="/app">返回夥伴列表查看或重新申請閱讀權限 →</Link></p>
+        </section>}
         <h2>我們如何使用資料</h2>
         <p>
           LINE
