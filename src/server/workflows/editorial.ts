@@ -59,11 +59,16 @@ export class Editorial {
       const l=await c.letter(db,id); await c.staff(db,token,'submit_review',l.missionaryId); c.conflict(l.revision,expected);
       if(l.status!=='draft') return fail(409,'invalid_state');
       const existingReviews=await db.select().from(s.letterReviews).where(and(eq(s.letterReviews.letterId,id),eq(s.letterReviews.revision,l.revision)));
-      if(existingReviews.length) return fail(409,'new_revision_required');
       const content=await c.snapshot(db,id,l.revision);
+      let revision=l.revision;
+      if(existingReviews.length) {
+        revision++;
+        await db.insert(s.letterRevisions).values({letterId:id,revision,editorId:admin.id,encryptedSnapshot:c.seal(content),contentHash:hash(JSON.stringify(content))});
+        await db.insert(s.letterDrafts).values({letterId:id,revision,encryptedRaw:c.seal(content),deleteAfter:new Date(+c.now()+30*86400000)});
+      }
       const m=await c.missionary(db,l.missionaryId); const required=m.governance==='invite_only' || content.visibility==='restricted' ? 2 : 1;
-      const tasks=await db.insert(s.reviewTasks).values(Array.from({length:required},()=>({letterId:id,revision:l.revision}))).returning({id:s.reviewTasks.id});
-      await db.update(s.letters).set({status:'pending_review'}).where(eq(s.letters.id,id)); return {id,revision:l.revision,tasks};
+      const tasks=await db.insert(s.reviewTasks).values(Array.from({length:required},()=>({letterId:id,revision}))).returning({id:s.reviewTasks.id});
+      await db.update(s.letters).set({status:'pending_review',revision,consentAt:null}).where(eq(s.letters.id,id)); return {id,revision,tasks};
     });
   }
   async decide(token:string|undefined,taskId:string,expected:number,decision:'approve'|'reject',consent:boolean,requestId:string,comment='') {
