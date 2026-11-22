@@ -34,7 +34,8 @@ export class Editorial {
     return c.operation({actorId:admin.id,action:'letter.edit',resourceId:id,requestId},{id,expected,content},async db=>{
       const l=await c.letter(db,id); await c.staff(db,token,'draft_edit',l.missionaryId); c.conflict(l.revision,expected);
       const m=await c.missionary(db,l.missionaryId); if(m.governance==='offline') return fail(403,'offline');
-      if(content.visibility==='public' && l.visibility==='restricted') return fail(403,'dual_control_required');
+      const current=await c.snapshot(db,id,l.revision);
+      if(content.visibility==='public' && current.visibility==='restricted') return fail(403,'dual_control_required');
       if(m.governance==='invite_only' && content.visibility!=='restricted') return fail(403,'policy_floor');
       if(l.status==='pending_review') return fail(409,'revision_frozen');
       if(content.assetIds.length) {
@@ -56,8 +57,8 @@ export class Editorial {
       if(l.status!=='draft') return fail(409,'invalid_state');
       const existingReviews=await db.select().from(s.letterReviews).where(and(eq(s.letterReviews.letterId,id),eq(s.letterReviews.revision,l.revision)));
       if(existingReviews.length) return fail(409,'new_revision_required');
-      await c.snapshot(db,id,l.revision);
-      const m=await c.missionary(db,l.missionaryId); const required=m.governance==='invite_only' || l.visibility==='restricted' ? 2 : 1;
+      const content=await c.snapshot(db,id,l.revision);
+      const m=await c.missionary(db,l.missionaryId); const required=m.governance==='invite_only' || content.visibility==='restricted' ? 2 : 1;
       const tasks=await db.insert(s.reviewTasks).values(Array.from({length:required},()=>({letterId:id,revision:l.revision}))).returning({id:s.reviewTasks.id});
       await db.update(s.letters).set({status:'pending_review'}).where(eq(s.letters.id,id)); return {id,revision:l.revision,tasks};
     });
