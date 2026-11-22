@@ -481,7 +481,7 @@ export function MemberPrivacy({ authenticated }: { authenticated: boolean }) {
         ) : (
           <p className="notice">
             {completed
-              ? "申請已受理，帳號已停用。後續將依保留政策處理。"
+              ? "申請已受理，帳號已關閉。後續將依保留政策處理。如想再次使用，請聯絡教會辦公室或關懷團隊，請同工協助。"
               : "請先登入，才能登出服務或提出刪除申請。"}
           </p>
         )}

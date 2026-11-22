@@ -24,7 +24,7 @@ export const errorLabels: Record<string, string> = {
   dual_control_required: "提高公開程度必須另案提出雙人核准。",
   not_approved: "審核與當事人同意尚未完成。",
   invalid_state: "狀態已變更，請重新整理。",
-  account_disabled: "此帳號已退出或停用。",
+  account_disabled: "此帳號已關閉。如想再次使用，請聯絡教會辦公室或關懷團隊，請同工協助。",
 };
 export class ClientError extends Error {
   constructor(
