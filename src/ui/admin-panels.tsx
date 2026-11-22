@@ -10,12 +10,14 @@ import {
   Empty,
   Feedback,
   formatDate,
+  formatGrantExpiry,
   PageHeading,
   useAction,
 } from "./shared";
 import { DataTable } from "./admin";
 import { riskLabels, roleLabels, type AdminIdentity } from "./navigation";
 import { canRetryNotification, canRevokeGrant } from "../server/policy";
+import {taipeiCalendarDate} from "../server/taipei-calendar";
 type Review = Awaited<ReturnType<UiReads["adminLetter"]>>;
 export function AdminLetter({ value }: { value: Review }) {
   const action = useAction();
@@ -458,15 +460,18 @@ export function AdminAccess({
   requests,
   grants,
   offset,
+  now=new Date().toISOString(),
 }: {
   requests: Awaited<ReturnType<AdminReads["list"]>>;
   grants: Awaited<ReturnType<UiReads["grants"]>>;
   offset: number;
+  now?:string;
 }) {
   const action = useAction();
   const [expiry, setExpiry] = useState(
-    new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    ()=>taipeiCalendarDate(new Date(now),30),
   );
+  const [minExpiry]=useState(()=>taipeiCalendarDate(new Date(now),1));
   return (
     <>
       <PageHeading
@@ -484,7 +489,7 @@ export function AdminAccess({
               type="date"
               value={expiry}
               required
-              min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+              min={minExpiry}
               onChange={(e) => setExpiry(e.target.value)}
             />
           </label>
@@ -508,9 +513,7 @@ export function AdminAccess({
                           api(`admin/access-requests/${row.id}/decision`, {
                             request_id: crypto.randomUUID(),
                             approve: true,
-                            expiresAt: new Date(
-                              expiry + "T00:00:00+08:00",
-                            ).toISOString(),
+                            expiresOn: expiry,
                           }),
                         "已核准指定觀看權限",
                       );
@@ -527,7 +530,6 @@ export function AdminAccess({
                         api(`admin/access-requests/${row.id}/decision`, {
                           request_id: crypto.randomUUID(),
                           approve: false,
-                          expiresAt: new Date().toISOString(),
                         }),
                       "已拒絕申請",
                     )
@@ -581,7 +583,7 @@ export function AdminAccess({
                     <td><code>{g.missionaryCode}</code></td>
                     <td><code>{g.memberCode}</code></td>
                     <td>{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</td>
-                    <td>{formatDate(g.expiresAt)}</td>
+                    <td>{formatGrantExpiry(g.expiresAt)}</td>
                     <td>
                       {g.revokedAt
                         ? "已撤銷"

@@ -206,6 +206,7 @@ export async function AdminScreen({
             requestId,
           )}
           grants={await ui.grants(token)}
+          now={d.core.now().toISOString()}
           offset={offset}
         />
       );

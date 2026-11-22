@@ -14,6 +14,7 @@ import { AdminReads,type ReadKind } from './workflows/reads';
 import { Media } from './workflows/media';
 import { LocalPrivateStorage } from './storage';
 import { auditEvents } from './db/schema';
+import {exclusiveTaipeiExpiry} from './taipei-calendar';
 const revision={request_id:z.uuid(),expected_revision:z.number().int().positive()};
 const requestId={request_id:z.uuid().default(()=>randomUUID())};
 const code=securityReasonInput;
@@ -94,7 +95,10 @@ export function createWorkflowHandler(deps:()=>WorkflowDependencies,origin:strin
         const b=z.object({...revision,decision:z.enum(['approve','reject']),consent:z.boolean(),comment:z.string().max(2000).optional()}).strict().parse(body); return respond(await e.decide(admin,z.uuid().parse(parts[2]),b.expected_revision,b.decision,b.consent,b.request_id,b.comment));
       }
       if(parts[1]==='access-requests' && parts[3]==='decision' && method==='POST') {
-        const b=z.object({...requestId,approve:z.boolean(),expiresAt:z.iso.datetime()}).strict().parse(body); return respond(await m.decideAccess(admin,z.uuid().parse(parts[2]),b.approve,new Date(b.expiresAt),b.request_id));
+        const b=z.object({...requestId,approve:z.boolean(),expiresOn:z.string().optional(),expiresAt:z.iso.datetime().optional()}).strict().refine(b=>!b.approve || !!(b.expiresOn || b.expiresAt)).refine(b=>!(b.expiresOn && b.expiresAt)).parse(body);
+        const expiry=b.expiresOn!==undefined?exclusiveTaipeiExpiry(b.expiresOn):new Date(b.expiresAt??d.core.now());
+        if(!expiry) return fail(400,'invalid_expiry');
+        return respond(await m.decideAccess(admin,z.uuid().parse(parts[2]),b.approve,expiry,b.request_id));
       }
       if(parts[1]==='access-grants' && parts[3]==='revoke' && method==='POST') {const b=z.object(requestId).strict().parse(body); return respond(await m.revoke(admin,z.uuid().parse(parts[2]),b.request_id));}
       if(parts[1]==='notification-jobs' && parts[3]==='retry' && method==='POST') {const b=z.object(requestId).strict().parse(body); return respond(await delivery.retry(admin,z.uuid().parse(parts[2]),b.request_id));}
