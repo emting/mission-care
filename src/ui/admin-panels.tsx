@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UiReads } from "../server/ui-reads";
 import type { AdminReads } from "../server/workflows/reads";
@@ -17,7 +17,7 @@ import {
 import { DataTable } from "./admin";
 import { riskLabels, roleLabels, type AdminIdentity } from "./navigation";
 import { canRetryNotification, canRevokeGrant } from "../server/policy";
-import {taipeiCalendarDate} from "../server/taipei-calendar";
+import {taipeiCalendarDate,minimumAccessExpiryDate} from "../server/taipei-calendar";
 type Review = Awaited<ReturnType<UiReads["adminLetter"]>>;
 export function AdminLetter({ value }: { value: Review }) {
   const action = useAction();
@@ -471,7 +471,9 @@ export function AdminAccess({
   const [expiry, setExpiry] = useState(
     ()=>taipeiCalendarDate(new Date(now),30),
   );
-  const [minExpiry]=useState(()=>taipeiCalendarDate(new Date(now),1));
+  const [minExpiry]=useState(()=>minimumAccessExpiryDate(new Date(now)));
+  const expiryInput=useRef<HTMLInputElement>(null);
+  const [expiryValid,setExpiryValid]=useState(true);
   return (
     <>
       <PageHeading
@@ -486,12 +488,16 @@ export function AdminAccess({
           <label>
             核准有效期限
             <input
+              ref={expiryInput}
               type="date"
               value={expiry}
               required
               min={minExpiry}
-              onChange={(e) => setExpiry(e.target.value)}
+              aria-describedby="access-expiry-help"
+              onChange={(e) => {setExpiry(e.target.value);setExpiryValid(e.currentTarget.checkValidity());}}
             />
+            <small id="access-expiry-help">最早為 {minExpiry}（臺北時間），可閱讀至所選日期結束。</small>
+            {!expiryValid && <small role="alert">請選擇有效且不早於最早期限的日期。</small>}
           </label>
         </div>
         <DataTable
@@ -501,8 +507,9 @@ export function AdminAccess({
             row.status === "pending" ? (
               <div className="button-row">
                 <button
-                  disabled={action.pending || !expiry}
+                  disabled={action.pending || !expiry || !expiryValid}
                   onClick={() => {
+                    if(!expiryInput.current?.reportValidity()) return;
                     if (
                       window.confirm(
                         "已透過教會既有流程完成身分核對，並確認授權對象與期限？",
@@ -561,37 +568,37 @@ export function AdminAccess({
       <section className="panel section-gap">
         <h2>已授權紀錄</h2>
         {grants.length ? (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>授權代號</th>
-                  <th>宣教士代號</th>
-                  <th>會友代號</th>
-                  <th>核准申請參照</th>
-                  <th>有效期限</th>
-                  <th>狀態</th>
-                  <th>操作</th>
+          <div className="table-scroll admin-data-scroll">
+            <table className="admin-data-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">授權代號</th>
+                  <th scope="col" role="columnheader">宣教士代號</th>
+                  <th scope="col" role="columnheader">會友代號</th>
+                  <th scope="col" role="columnheader">核准申請參照</th>
+                  <th scope="col" role="columnheader">有效期限</th>
+                  <th scope="col" role="columnheader">狀態</th>
+                  <th scope="col" role="columnheader">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {grants.map((g) => (
-                  <tr key={g.id}>
-                    <td>
+                  <tr role="row" key={g.id}>
+                    <td role="cell" data-label="授權代號"><span className="table-label">授權代號</span><span className="table-value">
                       <code title={g.id}>{g.id.slice(0, 8)}</code>
-                    </td>
-                    <td><code>{g.missionaryCode}</code></td>
-                    <td><code>{g.memberCode}</code></td>
-                    <td>{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</td>
-                    <td>{formatGrantExpiry(g.expiresAt)}</td>
-                    <td>
+                    </span></td>
+                    <td role="cell" data-label="宣教士代號"><span className="table-label">宣教士代號</span><span className="table-value"><code>{g.missionaryCode}</code></span></td>
+                    <td role="cell" data-label="會友代號"><span className="table-label">會友代號</span><span className="table-value"><code>{g.memberCode}</code></span></td>
+                    <td role="cell" data-label="核准申請參照"><span className="table-label">核准申請參照</span><span className="table-value">{g.requestId ? <code title={g.requestId}>{g.requestId.slice(0, 8)}</code> : "無申請參照"}</span></td>
+                    <td role="cell" data-label="有效期限"><span className="table-label">有效期限</span><span className="table-value table-nowrap">{formatGrantExpiry(g.expiresAt)}</span></td>
+                    <td role="cell" data-label="狀態"><span className="table-label">狀態</span><span className="table-value">
                       {g.revokedAt
                         ? "已撤銷"
                         : new Date(g.expiresAt) > new Date()
                           ? "有效"
                           : "已到期"}
-                    </td>
-                    <td>
+                    </span></td>
+                    <td role="cell" data-label="操作"><span className="table-label">操作</span><div className="table-value">
                       <button
                         className="danger"
                         aria-label={`撤銷 ${g.memberCode} 對 ${g.missionaryCode} 的閱讀權限`}
@@ -613,7 +620,7 @@ export function AdminAccess({
                       >
                         撤銷權限
                       </button>
-                    </td>
+                    </div></td>
                   </tr>
                 ))}
               </tbody>

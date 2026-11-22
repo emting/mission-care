@@ -3,6 +3,7 @@ import * as s from '../db/schema';
 import { fail,Services } from '../services';
 import { WorkflowCore } from './core';
 import {canRevokeGrant} from '../policy';
+import {minimumAccessExpiryDate,taipeiCalendarDate} from '../taipei-calendar';
 export function taipeiDate(now:Date) { return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(now); }
 export class Members {
   constructor(public core:WorkflowCore,private suppression=5) { if(suppression<2 || !Number.isInteger(suppression)) throw new Error('Invalid suppression threshold'); }
@@ -52,7 +53,8 @@ export class Members {
       const [r]=await db.select().from(s.accessRequests).where(eq(s.accessRequests.id,id)); if(!r) return fail(404,'not_found');
       await c.staff(db,token,'access_decide',r.missionaryId);
       if(r.status!=='pending') return fail(409,'invalid_state');
-      if(approve && (expiresAt<=c.now() || +expiresAt>+c.now()+366*86400000)) return fail(400,'invalid_expiry');
+      if(approve && (!Number.isFinite(+expiresAt) || expiresAt<=c.now() || +expiresAt>+c.now()+366*86400000)) return fail(400,'invalid_expiry');
+      if(approve && taipeiCalendarDate(new Date(+expiresAt-1))<minimumAccessExpiryDate(c.now())) return fail(400,'expiry_before_minimum');
       await db.update(s.accessRequests).set({status:approve?'approved':'rejected',decidedBy:admin.id,decidedAt:c.now()}).where(eq(s.accessRequests.id,id));
       if(approve) await db.insert(s.accessGrants).values({userId:r.userId,missionaryId:r.missionaryId,approvedBy:admin.id,expiresAt}).onConflictDoUpdate({target:[s.accessGrants.userId,s.accessGrants.missionaryId],set:{approvedBy:admin.id,expiresAt,revokedAt:null}});
       return {decided:true};

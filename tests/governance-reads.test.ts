@@ -60,7 +60,7 @@ it('access request cannot enumerate resources, is rate-limited, and approvals ar
   const [request]=await f.db.select().from(s.accessRequests).where(eq(s.accessRequests.userId,u.id));
   await expect(f.members.decideAccess(f.lead.token,request.id,true,new Date(+f.clock.now+1000),randomUUID())).rejects.toMatchObject({status:404});
   const scoped=await f.staff(['access_reviewer'],f.b.id);await expect(f.members.decideAccess(scoped.token,request.id,true,new Date(0),randomUUID())).rejects.toMatchObject({status:400});
-  await f.members.decideAccess(scoped.token,request.id,true,new Date(+f.clock.now+1000),randomUUID());
+  await f.members.decideAccess(scoped.token,request.id,true,new Date(+f.clock.now+86400000),randomUUID());
   const limit=createWorkflowHandler(()=>({core:f.core,editorial:f.editorial,members:f.members,delivery:f.delivery,governance:f.governance,reads:f.reads,media:f.media}),origin,'secret',new MemoryRateLimiter(1));
   await limit(f.request('grants/request',{request_id:randomUUID(),missionaryId:f.a.id},undefined,member));expect((await limit(f.request('grants/request',{request_id:randomUUID(),missionaryId:f.a.id},undefined,member))).status).toBe(429);
 });
