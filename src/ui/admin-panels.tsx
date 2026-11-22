@@ -928,12 +928,13 @@ export function AdminSecurity({
       <PageHeading
         eyebrow="降低可見性 · 留下處置紀錄"
         title="安全中心"
-        description="緊急控制只會封鎖或撤銷。恢復服務與提高公開程度需要獨立核准。"
+        description="緊急控制只會封鎖或撤銷。提高公開程度仍需獨立核准；恢復全域通知請至教會設定。"
       />
       <Feedback value={action.feedback} />
       <div className="detail-grid">
         <section className="panel security-controls">
           <h2>◈ 緊急安全控制</h2>
+          {canLockdown && <p><Link href="/admin/settings">前往教會設定恢復全域通知（需近期驗證） →</Link></p>}
           <p className="notice">
             ⚠ 操作立即生效，無法收回已下載或截圖的內容。請確認影響範圍。
           </p>

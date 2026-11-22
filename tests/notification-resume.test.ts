@@ -1,7 +1,7 @@
 import {beforeAll,afterAll,it,expect,vi} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {fixture,type Fixture,s,randomUUID,eq} from './workflow-fixture';
+import {fixture,type Fixture,s,w,randomUUID,eq} from './workflow-fixture';
 import {ResumeNotifications} from '../src/ui/admin-panels';
 vi.mock('next/navigation',()=>({useRouter:()=>({refresh:vi.fn()})}));
 let f:Fixture;
@@ -30,6 +30,8 @@ it('owner and auditor can resume with an audited receipt without bypassing zero 
     expect((await f.route(f.request('admin/security/resume-notifications',{reasonCode:'other',confirmed:true,request_id:id},admin.token))).status).toBe(200);
     const [audit]=await f.db.select().from(s.auditEvents).where(eq(s.auditEvents.requestId,id));
     expect(audit).toMatchObject({actorId:admin.id,action:'notification.resume',outcome:'success'});
+    const [operation]=await f.db.select().from(w.operations).where(eq(w.operations.requestId,id));
+    expect(operation.result).toMatchObject({status:'resumed',reasonCode:'other'});
     expect(await f.delivery.dispatch()).toMatchObject({status:'quota',processed:0});
   }
   expect(f.sent).toHaveLength(0);

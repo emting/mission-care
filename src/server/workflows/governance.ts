@@ -71,7 +71,7 @@ export class Governance {
       await c.staff(db,token,'notification_resume',null,true);
       if(!securityReasonInput.safeParse(input.reasonCode).success || input.confirmed!==true) return fail(400,'invalid_input');
       await this.setting(db,'global_notification_pause',false);
-      return {status:'resumed'};
+      return {status:'resumed',reasonCode:input.reasonCode};
     });
   }
   async lockdown(token:string|undefined,input:LockdownInput,requestId:string) {
