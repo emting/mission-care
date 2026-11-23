@@ -1,7 +1,7 @@
 import { and,eq,inArray } from 'drizzle-orm';
 import * as s from '../db/schema';
 import { WorkflowCore } from './core';
-import { fail } from '../services';
+import { ApiError,fail } from '../services';
 import { hash } from '../security';
 import { sanitizeImage,type PrivateStorage } from '../storage';
 export class Media {
@@ -25,14 +25,22 @@ export class Media {
   }
   async read(memberToken:string|undefined,adminToken:string|undefined,id:string,requestId:string) {
     const c=this.core; const [asset]=await c.db.select().from(s.letterAssets).where(eq(s.letterAssets.id,id));
-    // Authenticate even when the requested resource is missing.
-    const actor=adminToken ? (await c.auth.adminSession(adminToken)).admin.id : (await c.auth.member(memberToken)).id;
     if(!asset) return fail(404,'not_found'); const l=await c.letter(c.db,asset.letterId);
-    if(adminToken) await c.auth.staff(adminToken,'letter_read',l.missionaryId);
-    else {
-      await c.auth.letter(memberToken,l.id); const content=await c.snapshot(c.db,l.id,l.revision);
-      if(!asset.reviewedAt || !content.assetIds.includes(asset.id)) return fail(404,'not_found');
+    let actor:string|undefined;
+    const authorizations=[
+      async()=>{
+        const member=await c.auth.member(memberToken);
+        await c.auth.letter(memberToken,l.id); const content=await c.snapshot(c.db,l.id,l.revision);
+        if(!asset.reviewedAt || !content.assetIds.includes(asset.id)) return fail(404,'not_found');
+        return member.id;
+      },
+      async()=>(await c.auth.staff(adminToken,'letter_read',l.missionaryId)).admin.id,
+    ];
+    for(const authorize of authorizations) {
+      try { actor=await authorize(); break; }
+      catch(error) { if(!(error instanceof ApiError) || ![401,403,404].includes(error.status)) throw error; }
     }
+    if(!actor) return fail(404,'not_found');
     await c.audit(c.db,{actorId:actor,action:'media.read',resourceId:id,requestId,missionaryId:l.missionaryId});
     try { return await this.storage.get(asset.privateStorageKey); } catch { return fail(404,'not_found'); }
   }
