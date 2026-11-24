@@ -11,7 +11,7 @@ import {permissions,type Role} from '../src/server/policy';
 import {staticDemoDocument} from './static-demo-document';
 import {assertSafeDemo,assertDemoReferences,demoFile,relativeDemoPath} from './static-demo-safety';
 
-type Ready={origin:string;member:string;config:{password:string;authKey:string;subjectKey:string;totp:Record<string,string>}};
+type Ready={origin:string;member:string;fixtureSecrets:string[];config:{password:string;authKey:string;subjectKey:string;totp:Record<string,string>}};
 type Capture={scope:string;route:string;file:string;html?:string};
 const roles:Role[]=['church_owner','mission_lead','editor','reviewer','access_reviewer','security_auditor','finance_link_manager','support'];
 let stage='isolated production build';
@@ -49,7 +49,7 @@ async function main() {
       server!.once('message',(message:Ready|{error:string})=>{clearTimeout(timer);if('error' in message) reject(Error(message.error));else accept(message);});
       server!.once('exit',()=>{clearTimeout(timer);reject(Error('Private demo server exited'));});
     });
-    const secrets=sensitiveValues;secrets.push(ready.member,ready.config.password,ready.config.authKey,ready.config.subjectKey,...Object.values(ready.config.totp));
+    const secrets=sensitiveValues;secrets.push(ready.member,...ready.fixtureSecrets,ready.config.password,ready.config.authKey,ready.config.subjectKey,...Object.values(ready.config.totp));
     stage='browser/session setup and authorized route discovery';
     browser=await chromium.launch({headless:true});
     await mkdir(join(site,'assets'),{recursive:true});await writeFile(join(site,'assets/demo.css'),demoCss);
@@ -136,7 +136,7 @@ async function main() {
     }
     await mkdir(join(site,'admin'),{recursive:true});await mkdir(join(site,'unavailable'),{recursive:true});
     await writeFile(join(site,'index.html'),entry('以關懷相連，以代禱同行。','<p>這是公開的靜態展示，不需要帳號。瀏覽虛構畫面，了解不同角色如何一起守護關懷與隱私。所有操作均已停用，沒有登入或儲存功能。</p><div class="demo-grid"><a class="demo-card" href="member/app/index.html"><strong>會友平台 →</strong>閱讀近況、代禱與閱讀權限</a><a class="demo-card" href="admin/index.html"><strong>管理工作空間 →</strong>選擇角色，探索核對與審閱流程</a></div><p><a href="landing/app/index.html">觀看會友登入說明（無法登入） →</a></p>'));
-    await writeFile(join(site,'admin/index.html'),entry('選擇管理展示角色',`<p>角色只用來切換已生成的靜態畫面，不代表取得任何真實權限。每個角色只展示其授權範圍內的虛構資料。</p><div class="demo-grid">${roles.map(role=>`<a class="demo-card" href="../roles/${role}/admin/index.html"><strong>${roleLabels[role]} →</strong>${role}</a>`).join('')}</div>`,'../'));
+    await writeFile(join(site,'admin/index.html'),entry('選擇管理展示角色',`<p>角色只用來切換已生成的靜態畫面，不代表取得任何真實權限。每個角色只展示其授權範圍內的虛構資料。</p><p>教會治理負責人僅具治理與稽核權限，四張待辦卡片皆不在其授權範圍；不是資料遺漏。內容審核、閱讀權限及通知異常請選差傳主管；安全事件請選安全稽核；奉獻連結提案請選奉獻連結管理。</p><p><a href="../roles/mission_lead/admin/index.html">先看有待辦的差傳主管總覽 →</a></p><div class="demo-grid">${roles.map(role=>`<a class="demo-card" href="../roles/${role}/admin/index.html"><strong>${roleLabels[role]} →</strong>${role}</a>`).join('')}</div>`,'../'));
     await writeFile(join(site,'unavailable/index.html'),entry('展示版不提供此功能','<p>此連結尚未納入靜態導覽，或需要真正的互動。展示版不會登入、送出資料、發送訊息或處理奉獻。</p><p><a href="../index.html">返回展示入口 →</a></p>','../'));
     const files:{name:string;bytes:Buffer}[]=[];
     async function list(dir:string,prefix='') {

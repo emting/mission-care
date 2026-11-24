@@ -24,6 +24,20 @@ uses the normal password and TOTP endpoints. Credentials travel only over privat
 IPC/loopback; seed credential logging is suppressed. All temporary data and the
 server are removed after success or failure.
 
+Only the demo worker adds extra fictional work after the normal seed: pending
+review/access requests, a failed notification, an open incident, and an unapproved
+donation-link proposal. It uses the application workflows with temporary fixture
+staff sessions, deleted before capture. A signed fictional follow event and an
+in-process, permanently failing messaging stub exercise notification dispatch;
+no messaging client can contact LINE. The temporary quota override is restored
+and notifications are paused again before capture. Normal seeding is unchanged.
+
+The church-owner role has governance/audit permissions, not the four operational
+overview permissions. Its unavailable cards are intentional, not empty data.
+The role picker explains this and recommends mission lead for reviews, access
+requests and notification failures, security auditor for incidents, and finance
+link manager for the pending donation proposal. No role receives extra permissions.
+
 The fixed route families include signed-out member landing, member list,
 authorized missionary/letter details, privacy/reading access, each role's allowed
 console navigation, notification tabs, and authorized letter/missionary details.
