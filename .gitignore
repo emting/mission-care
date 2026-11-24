@@ -8,3 +8,4 @@ private-media/
 .local-data/
 playwright-report/
 test-results/
+demo-site/
