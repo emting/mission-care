@@ -3,6 +3,7 @@ export type DemoDocumentOptions={file:string;routes:Record<string,string>;assets
 // This function runs in Chromium, on a clone rather than the live React tree.
 export function staticDemoDocument(options:DemoDocumentOptions) {
   const root=document.documentElement.cloneNode(true) as HTMLElement;
+  root.querySelectorAll('.env-badge').forEach(el=>el.textContent='DEMO · 展示版');
   const parents=options.file.split('/').slice(0,-1).map(()=>'..').join('/');
   const prefix=parents?parents+'/':'';
   const uuid=/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;

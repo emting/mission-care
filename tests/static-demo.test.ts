@@ -15,7 +15,7 @@ it('maps fixed route families and notification tabs to relative static files',()
 });
 it('accepts inert fictional pages, empty output and harmless binary assets',()=>{
   expect(()=>assertSafeDemo([],[])).not.toThrow();
-  expect(()=>assertSafeDemo([file('<form disabled=""><input disabled=""><button disabled="">展示</button></form>'),file('image','assets/photo.webp')],['fictional-secret'])).not.toThrow();
+  expect(()=>assertSafeDemo([file('<span class="env-badge">DEMO · 展示版</span><form disabled=""><input disabled=""><button disabled="">展示</button></form>'),file('image','assets/photo.webp')],['fictional-secret'])).not.toThrow();
 });
 it('checks nested page, stylesheet and image references and rejects missing/external files',()=>{
   const files=[file('<a href="../index.html">入口</a><link href="../assets/demo.css"><img src="../assets/photo.webp">','nested/index.html'),file(''),file('body{background:url("photo.webp")}','assets/demo.css'),file('image','assets/photo.webp')];
@@ -28,6 +28,7 @@ it.each(['password-value','TOTP-VALUE','cookie-token'])('fails closed on an exac
   expect(()=>assertSafeDemo([file('binary '+secret,'assets/photo.webp')],[secret])).toThrow('credential/session');
 });
 it.each([
+  '<span class="env-badge">PROD</span>',
   'request_id: 00000000-0000-4000-8000-000000000001',
   '<span title="00000000-0000-4000-8000-000000000001">request_id</span>',
   'U0123456789abcdef0123456789abcdef',

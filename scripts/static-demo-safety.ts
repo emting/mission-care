@@ -33,6 +33,7 @@ export function assertSafeDemo(files:{name:string;bytes:Buffer}[],secrets:string
       throw Error(`Static demo safety check failed: credential/session value in ${file.name}`);
     if(!/\.(?:html|css|svg|json|txt)$/i.test(file.name)) continue;
     const text=file.bytes.toString('utf8');
+    if(text.includes('PROD')) throw Error(`Static demo safety check failed: production label in ${file.name}`);
     if(/\bU[0-9a-f]{32}\b/i.test(text)||/__Host-mc_|set-cookie|tokenHash|totpSecret|encryptedSub/i.test(text))
       throw Error(`Static demo safety check failed: identity/session metadata in ${file.name}`);
     const withoutPaths=text.replace(/\b(?:href|src)="[^"]*"/g,'');
