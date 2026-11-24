@@ -27,11 +27,14 @@ export async function populateDemoWork(core:WorkflowCore,member:string,actors:De
   const raw=Buffer.from(JSON.stringify({events:[{webhookEventId:randomUUID(),type:'follow',timestamp:+core.now(),source:{userId:decryptSecret(identity.encryptedSub,subjectKey)}}]}));
   await delivery.webhook(raw,createHmac('sha256',webhookSecret).update(raw).digest('base64'));
   await members.subscribe(member,missionaryId,true,true,randomUUID());
-  const letter=await editorial.create(actors.editor,undefined,missionaryId,{...content,title:'虛構展示：通知失敗的關懷近況'},randomUUID());
-  const submitted=await editorial.submit(actors.editor,letter.id,letter.revision,randomUUID());
-  for(const [index,task] of submitted.tasks.entries())
-    await editorial.decide(index===0?actors.reviewer:actors.reviewer2,task.id,submitted.revision,'approve',true,randomUUID());
-  await editorial.publish(actors.mission_lead,letter.id,submitted.revision,randomUUID());
+  async function publishNotificationExample(title:string) {
+    const letter=await editorial.create(actors.editor,undefined,missionaryId,{...content,title},randomUUID());
+    const submitted=await editorial.submit(actors.editor,letter.id,letter.revision,randomUUID());
+    for(const [index,task] of submitted.tasks.entries())
+      await editorial.decide(index===0?actors.reviewer:actors.reviewer2,task.id,submitted.revision,'approve',true,randomUUID());
+    await editorial.publish(actors.mission_lead,letter.id,submitted.revision,randomUUID());
+  }
+  await publishNotificationExample('虛構展示：通知失敗的關懷近況');
   const [quota]=await core.db.select().from(s.systemSettings).where(eq(s.systemSettings.key,'monthly_notification_quota'));
   try {
     // Quota configuration has no workflow setter; restore it before any page is captured.
@@ -42,4 +45,5 @@ export async function populateDemoWork(core:WorkflowCore,member:string,actors:De
     await governance.lockdown(actors.security_auditor,{pauseNotifications:true,reasonCode:'delivery_failure'},randomUUID());
     await core.db.update(s.systemSettings).set({value:quota?.value??0}).where(eq(s.systemSettings.key,'monthly_notification_quota'));
   }
+  await publishNotificationExample('虛構展示：等待通知的關懷近況');
 }

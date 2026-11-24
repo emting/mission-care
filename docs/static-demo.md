@@ -30,7 +30,10 @@ donation-link proposal. It uses the application workflows with temporary fixture
 staff sessions, deleted before capture. A signed fictional follow event and an
 in-process, permanently failing messaging stub exercise notification dispatch;
 no messaging client can contact LINE. The temporary quota override is restored
-and notifications are paused again before capture. Normal seeding is unchanged.
+and notifications are paused again before capture. A separate fictional letter
+is then reviewed and published while paused to leave an eligible pending job
+alongside the failed example, even if dispatch cancelled ineligible seed jobs.
+Normal seeding is unchanged.
 
 The church-owner role has governance/audit permissions, not the four operational
 overview permissions. Its unavailable cards are intentional, not empty data.
